@@ -1,6 +1,6 @@
 # Personal Knowledge Hub Frontend
 
-“基于 RAG 与 Agent 的智能个人知识库系统”前端。当前阶段完成 React、TypeScript、Vite、Tailwind CSS、React Router、Axios 和 Zustand 的基础初始化。
+“基于 RAG 与 Agent 的智能个人知识库系统”前端。当前已完成基础布局、用户注册、JWT 登录、会话恢复和受保护路由。
 
 ## 环境要求
 
@@ -34,15 +34,26 @@ npm run dev
 npm run build
 ```
 
+## 认证流程
+
+- 注册成功后跳转登录页
+- 登录成功后在浏览器本地保存 Access Token
+- Axios 自动为请求添加 Bearer Token
+- 应用启动时通过 `/auth/me` 恢复用户状态
+- Token 无效或过期时自动清除登录状态并返回登录页
+- 退出登录会清除本地 Token
+
+Token 只用于请求认证，不会显示在页面中。
+
 ## 当前页面
 
-- `/`：首页 Dashboard，并检查后端健康状态
-- `/login`：登录占位页
-- `/register`：注册占位页
-- `/knowledge-bases`：知识库占位页
-- `/documents`：文档占位页
-- `/chat`：AI 问答占位页
-- `/agent`：Agent 占位页
-- `/notes`：笔记占位页
+- `/`：受保护的 Dashboard，并检查后端健康状态
+- `/login`：登录页
+- `/register`：注册页
+- `/knowledge-bases`：受保护的知识库占位页
+- `/documents`：受保护的文档占位页
+- `/chat`：受保护的 AI 问答占位页
+- `/agent`：受保护的 Agent 占位页
+- `/notes`：受保护的笔记占位页
 
-当前不包含认证、知识库、文档处理、RAG 或 Agent 业务逻辑。
+当前不包含知识库、文档处理、RAG 或 Agent 业务逻辑。

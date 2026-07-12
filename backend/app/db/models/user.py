@@ -1,9 +1,13 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String, func, true
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.knowledge_base import KnowledgeBase
 
 
 class User(Base):
@@ -40,4 +44,8 @@ class User(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+    knowledge_bases: Mapped[list["KnowledgeBase"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
     )

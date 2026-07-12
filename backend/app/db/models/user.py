@@ -48,4 +48,5 @@ class User(Base):
     knowledge_bases: Mapped[list["KnowledgeBase"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )

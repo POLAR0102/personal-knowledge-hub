@@ -1,45 +1,12 @@
-from collections.abc import Generator
-
 import bcrypt
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.db.base import Base
 from app.db.models import User
-from app.db.session import get_db
-from app.main import app
 from app.repositories.user import UserRepository
-
-
-@pytest.fixture
-def client_and_session() -> Generator[
-    tuple[TestClient, sessionmaker[Session]],
-    None,
-    None,
-]:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    testing_session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    Base.metadata.create_all(engine)
-
-    def override_get_db() -> Generator[Session, None, None]:
-        db = testing_session()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as client:
-        yield client, testing_session
-    app.dependency_overrides.clear()
 
 
 def registration_payload(**overrides: str) -> dict[str, str]:

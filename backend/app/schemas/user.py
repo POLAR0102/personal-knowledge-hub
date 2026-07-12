@@ -54,3 +54,22 @@ class UserUpdate(BaseModel):
     email: UserEmail | None = None
     password: Password | None = None
     is_active: bool | None = None
+
+
+class UserLogin(BaseModel):
+    email: UserEmail
+    password: Password
+
+
+class UserPublic(BaseModel):
+    id: int
+    username: str
+    email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserPublic

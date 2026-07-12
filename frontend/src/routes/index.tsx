@@ -6,6 +6,7 @@ import { Agent } from '../pages/Agent'
 import { Chat } from '../pages/Chat'
 import { Dashboard } from '../pages/Dashboard'
 import { Documents } from '../pages/Documents'
+import { KnowledgeBaseDetail } from '../pages/KnowledgeBaseDetail'
 import { KnowledgeBases } from '../pages/KnowledgeBases'
 import { Login } from '../pages/Login'
 import { Notes } from '../pages/Notes'
@@ -23,6 +24,10 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="knowledge-bases" element={<KnowledgeBases />} />
+          <Route
+            path="knowledge-bases/:id"
+            element={<KnowledgeBaseDetail />}
+          />
           <Route path="documents" element={<Documents />} />
           <Route path="chat" element={<Chat />} />
           <Route path="agent" element={<Agent />} />

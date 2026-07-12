@@ -23,6 +23,8 @@ export function getApiErrorMessage(
       'Incorrect email or password': '邮箱或密码错误',
       'Unable to register user': '注册失败，请稍后重试',
       'Unable to authenticate user': '登录失败，请稍后重试',
+      'Knowledge base not found': '知识库不存在或无权访问',
+      'Knowledge base operation failed': '知识库操作失败，请稍后重试',
     }
     return messages[detail] ?? detail
   }

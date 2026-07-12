@@ -1,16 +1,73 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { getHealth } from '../api/health'
+import { listKnowledgeBases } from '../api/knowledge-bases'
 import type { ApiConnectionStatus } from '../types/health'
 
-const summaryCards = [
-  { label: '知识库', value: '—', caption: '等待业务模块接入' },
-  { label: '文档', value: '—', caption: '等待业务模块接入' },
-  { label: '笔记', value: '—', caption: '等待业务模块接入' },
-  { label: '问答会话', value: '—', caption: '等待业务模块接入' },
-]
+interface SummaryCardProps {
+  label: string
+  value: string | number
+  caption: string
+  to?: string
+}
+
+function SummaryCard({ label, value, caption, to }: SummaryCardProps) {
+  const content = (
+    <article
+      className={`h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${
+        to
+          ? 'transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md'
+          : ''
+      }`}
+    >
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-2 text-xs text-slate-400">{caption}</p>
+    </article>
+  )
+
+  return to ? (
+    <Link to={to} className="block rounded-2xl focus:outline-none focus:ring-3 focus:ring-indigo-100">
+      {content}
+    </Link>
+  ) : (
+    content
+  )
+}
+
+interface QuickStepProps {
+  index: number
+  title: string
+  status: string
+  to?: string
+}
+
+function QuickStep({ index, title, status, to }: QuickStepProps) {
+  const content: ReactNode = (
+    <div
+      className={`h-full rounded-xl border border-slate-100 bg-slate-50 p-4 ${
+        to ? 'transition hover:border-indigo-200 hover:bg-indigo-50' : ''
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-indigo-600">0{index}</span>
+        <span className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-400">
+          {status}
+        </span>
+      </div>
+      <p className="mt-3 text-sm font-medium text-slate-700">{title}</p>
+    </div>
+  )
+
+  return to ? <Link to={to}>{content}</Link> : content
+}
 
 export function Dashboard() {
   const [status, setStatus] = useState<ApiConnectionStatus>('checking')
+  const [knowledgeBaseTotal, setKnowledgeBaseTotal] = useState<number | null>(
+    null,
+  )
+  const [knowledgeBaseError, setKnowledgeBaseError] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -27,6 +84,12 @@ export function Dashboard() {
       })
 
     return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    listKnowledgeBases({ page: 1, page_size: 1 })
+      .then((data) => setKnowledgeBaseTotal(data.total))
+      .catch(() => setKnowledgeBaseError(true))
   }, [])
 
   const statusView = {
@@ -50,6 +113,14 @@ export function Dashboard() {
     },
   }[status]
 
+  const knowledgeBaseCaption = knowledgeBaseError
+    ? '暂时无法获取数量'
+    : knowledgeBaseTotal === null
+      ? '正在获取真实数据…'
+      : knowledgeBaseTotal === 0
+        ? '尚未创建知识库'
+        : '查看和管理知识库'
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col justify-between gap-5 rounded-2xl bg-gradient-to-r from-slate-950 to-slate-800 p-6 text-white shadow-sm sm:p-8 lg:flex-row lg:items-end">
@@ -63,23 +134,20 @@ export function Dashboard() {
           </p>
         </div>
         <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-          当前阶段：前端初始化
+          当前阶段：知识库管理
         </span>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {summaryCards.map((card) => (
-          <article
-            key={card.label}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
-            <p className="text-sm font-medium text-slate-500">{card.label}</p>
-            <p className="mt-3 text-3xl font-semibold text-slate-900">
-              {card.value}
-            </p>
-            <p className="mt-2 text-xs text-slate-400">{card.caption}</p>
-          </article>
-        ))}
+        <SummaryCard
+          label="知识库"
+          value={knowledgeBaseTotal ?? '—'}
+          caption={knowledgeBaseCaption}
+          to="/knowledge-bases"
+        />
+        <SummaryCard label="文档" value="—" caption="文档模块尚未接入" />
+        <SummaryCard label="笔记" value="—" caption="笔记模块尚未接入" />
+        <SummaryCard label="问答会话" value="—" caption="问答模块尚未接入" />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -88,29 +156,22 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-semibold text-slate-900">开始使用</p>
               <p className="mt-1 text-sm text-slate-500">
-                后续任务将逐步开放完整知识管理流程
+                知识库管理已开放，其他业务模块将逐步接入
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-              开发中
+              持续开发
             </span>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {['创建知识库', '上传个人文档', '开始 AI 问答'].map(
-              (step, index) => (
-                <div
-                  key={step}
-                  className="rounded-xl border border-slate-100 bg-slate-50 p-4"
-                >
-                  <span className="text-xs font-semibold text-indigo-600">
-                    0{index + 1}
-                  </span>
-                  <p className="mt-2 text-sm font-medium text-slate-700">
-                    {step}
-                  </p>
-                </div>
-              ),
-            )}
+            <QuickStep
+              index={1}
+              title="创建知识库"
+              status="已开放"
+              to="/knowledge-bases"
+            />
+            <QuickStep index={2} title="上传个人文档" status="未开放" />
+            <QuickStep index={3} title="开始 AI 问答" status="未开放" />
           </div>
         </article>
 

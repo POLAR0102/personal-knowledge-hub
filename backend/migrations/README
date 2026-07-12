@@ -1,1 +1,29 @@
-Alembic migration environment for the Personal Knowledge Hub backend.
+# Database initialization
+
+Alembic manages the database schema for the Personal Knowledge Hub backend.
+
+From the `backend` directory, activate the virtual environment and apply all
+migrations:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+alembic upgrade head
+```
+
+The default SQLite database is created at:
+
+```text
+backend/personal_knowledge_hub.db
+```
+
+To inspect the current migration version:
+
+```powershell
+alembic current
+```
+
+To create a migration after changing SQLAlchemy models:
+
+```powershell
+alembic revision --autogenerate -m "describe change"
+```

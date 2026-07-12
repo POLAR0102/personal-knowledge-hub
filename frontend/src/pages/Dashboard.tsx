@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { getDocumentStats } from '../api/documents'
 import { getHealth } from '../api/health'
 import { listKnowledgeBases } from '../api/knowledge-bases'
 import type { ApiConnectionStatus } from '../types/health'
@@ -68,6 +69,8 @@ export function Dashboard() {
     null,
   )
   const [knowledgeBaseError, setKnowledgeBaseError] = useState(false)
+  const [documentTotal, setDocumentTotal] = useState<number | null>(null)
+  const [documentError, setDocumentError] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -90,6 +93,12 @@ export function Dashboard() {
     listKnowledgeBases({ page: 1, page_size: 1 })
       .then((data) => setKnowledgeBaseTotal(data.total))
       .catch(() => setKnowledgeBaseError(true))
+  }, [])
+
+  useEffect(() => {
+    getDocumentStats()
+      .then((data) => setDocumentTotal(data.total))
+      .catch(() => setDocumentError(true))
   }, [])
 
   const statusView = {
@@ -121,6 +130,14 @@ export function Dashboard() {
         ? '尚未创建知识库'
         : '查看和管理知识库'
 
+  const documentCaption = documentError
+    ? '暂时无法获取数量'
+    : documentTotal === null
+      ? '正在获取真实数据…'
+      : documentTotal === 0
+        ? '尚未上传文档'
+        : '选择知识库管理文档'
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col justify-between gap-5 rounded-2xl bg-gradient-to-r from-slate-950 to-slate-800 p-6 text-white shadow-sm sm:p-8 lg:flex-row lg:items-end">
@@ -134,7 +151,7 @@ export function Dashboard() {
           </p>
         </div>
         <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-          当前阶段：知识库管理
+          当前阶段：文档管理基础
         </span>
       </section>
 
@@ -145,7 +162,12 @@ export function Dashboard() {
           caption={knowledgeBaseCaption}
           to="/knowledge-bases"
         />
-        <SummaryCard label="文档" value="—" caption="文档模块尚未接入" />
+        <SummaryCard
+          label="文档"
+          value={documentTotal ?? '—'}
+          caption={documentCaption}
+          to="/knowledge-bases"
+        />
         <SummaryCard label="笔记" value="—" caption="笔记模块尚未接入" />
         <SummaryCard label="问答会话" value="—" caption="问答模块尚未接入" />
       </section>
@@ -156,7 +178,7 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-semibold text-slate-900">开始使用</p>
               <p className="mt-1 text-sm text-slate-500">
-                知识库管理已开放，其他业务模块将逐步接入
+                知识库和文档上传已开放，解析与问答模块将逐步接入
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
@@ -170,7 +192,12 @@ export function Dashboard() {
               status="已开放"
               to="/knowledge-bases"
             />
-            <QuickStep index={2} title="上传个人文档" status="未开放" />
+            <QuickStep
+              index={2}
+              title="上传个人文档"
+              status="已开放"
+              to="/knowledge-bases"
+            />
             <QuickStep index={3} title="开始 AI 问答" status="未开放" />
           </div>
         </article>

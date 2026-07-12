@@ -7,6 +7,7 @@ import {
 } from '../api/knowledge-bases'
 import { DeleteKnowledgeBaseDialog } from '../components/knowledge-base/DeleteKnowledgeBaseDialog'
 import { KnowledgeBaseForm } from '../components/knowledge-base/KnowledgeBaseForm'
+import { DocumentManager } from '../components/document/DocumentManager'
 import type {
   KnowledgeBase,
   KnowledgeBaseCreate,
@@ -154,18 +155,7 @@ export function KnowledgeBaseDetail() {
         </dl>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">知识库文档</p>
-          <p className="mt-1 text-sm text-slate-500">管理该知识库中的资料</p>
-        </div>
-        <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
-          <p className="text-sm font-medium text-slate-700">文档模块尚未接入</p>
-          <p className="mt-2 text-xs text-slate-400">
-            后续将支持文档上传、解析与向量化处理。
-          </p>
-        </div>
-      </section>
+      <DocumentManager knowledgeBaseId={knowledgeBase.id} />
 
       {isEditing && (
         <KnowledgeBaseForm

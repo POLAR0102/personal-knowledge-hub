@@ -25,6 +25,13 @@ export function getApiErrorMessage(
       'Unable to authenticate user': '登录失败，请稍后重试',
       'Knowledge base not found': '知识库不存在或无权访问',
       'Knowledge base operation failed': '知识库操作失败，请稍后重试',
+      'Document not found': '文档不存在或无权访问',
+      'Document operation failed': '文档操作失败，请稍后重试',
+      'Document storage operation failed': '文档文件操作失败，请稍后重试',
+      'Invalid filename': '文件名无效',
+      'File is empty': '不能上传空文件',
+      'File is too large': '文件超过上传大小限制',
+      'Unsupported file type or MIME type': '文件格式或 MIME 类型不受支持',
     }
     return messages[detail] ?? detail
   }

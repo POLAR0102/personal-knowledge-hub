@@ -1,6 +1,6 @@
 # Personal Knowledge Hub Frontend
 
-“基于 RAG 与 Agent 的智能个人知识库系统”前端。当前已完成基础布局、用户注册、JWT 登录、会话恢复、受保护路由和知识库管理。
+“基于 RAG 与 Agent 的智能个人知识库系统”前端。当前已完成基础布局、用户认证、知识库管理和文档上传管理。
 
 ## 环境要求
 
@@ -47,14 +47,14 @@ Token 只用于请求认证，不会显示在页面中。
 
 ## 当前页面
 
-- `/`：受保护的 Dashboard，检查后端健康状态并显示真实知识库数量
+- `/`：受保护的 Dashboard，显示真实知识库和文档数量
 - `/login`：登录页
 - `/register`：注册页
 - `/knowledge-bases`：受保护的知识库列表、分页、创建、编辑和删除
-- `/knowledge-bases/:id`：受保护的知识库详情、编辑和删除
-- `/documents`：受保护的文档占位页
+- `/knowledge-bases/:id`：受保护的知识库详情、编辑、删除和文档管理
+- `/documents`：受保护的文档管理入口
 - `/chat`：受保护的 AI 问答占位页
 - `/agent`：受保护的 Agent 占位页
 - `/notes`：受保护的笔记占位页
 
-当前不包含文档处理、RAG、AI 问答、Agent 或笔记业务逻辑。
+文档上传后状态为 `pending`（等待处理）。当前不包含文档解析、文本切分、Embedding、向量数据库、RAG、AI 问答、Agent 或笔记业务逻辑。

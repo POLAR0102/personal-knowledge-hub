@@ -1,6 +1,6 @@
 # Personal Knowledge Hub API
 
-“基于 RAG 与 Agent 的智能个人知识库系统”的 FastAPI 后端。当前版本仅完成 T01：应用初始化、环境变量、SQLite/SQLAlchemy 基础设施、Alembic 预留和健康检查。
+“基于 RAG 与 Agent 的智能个人知识库系统”的 FastAPI 后端。当前已完成用户认证、知识库 CRUD 和文档上传管理基础。
 
 ## 环境要求
 
@@ -18,7 +18,9 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-请在 `.env` 中将 `JWT_SECRET_KEY` 替换为本地生成的随机密钥。T01 尚未实现 JWT，但不要将真实密钥提交到 Git。
+请在 `.env` 中将 `JWT_SECRET_KEY` 替换为本地生成的随机密钥。不要将真实密钥提交到 Git。
+
+文档默认保存在 `UPLOAD_DIR=./uploads`，单文件大小由 `MAX_UPLOAD_SIZE_MB=20` 控制。
 
 ## 启动
 
@@ -43,16 +45,23 @@ uvicorn app.main:app --reload
 ## 测试
 
 ```powershell
-pytest
+pytest -q
 ```
 
 ## 数据库迁移
 
-Alembic 环境已预留。后续添加 SQLAlchemy 模型后，可创建并执行迁移：
+执行已有迁移：
 
 ```powershell
-alembic revision --autogenerate -m "describe change"
 alembic upgrade head
 ```
 
 默认数据库为项目运行目录中的 `personal_knowledge_hub.db`。数据库文件和本地 `.env` 已被 Git 忽略。
+
+## 文档管理
+
+- 支持 TXT、Markdown、PDF 和 DOCX
+- 单文件最大 20MB
+- 上传后初始状态为 `pending`
+- 文件使用随机名称保存，公开响应不暴露磁盘路径
+- 当前阶段不解析正文，也不执行文本切分、Embedding 或 RAG

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,6 +17,8 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+    upload_dir: Path = Path("./uploads")
+    max_upload_size_mb: int = 20
 
     model_config = SettingsConfigDict(
         env_file=".env",

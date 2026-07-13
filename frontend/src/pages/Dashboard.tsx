@@ -147,11 +147,11 @@ export function Dashboard() {
             你的智能知识工作台
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-            在这里管理个人资料、发起知识问答，并让 Agent 帮你整理信息。
+            在这里管理个人资料、建立向量索引，并检索真实文档片段。
           </p>
         </div>
         <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-          当前阶段：文档解析与切分
+          当前阶段：向量索引与语义检索
         </span>
       </section>
 
@@ -178,7 +178,7 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-semibold text-slate-900">开始使用</p>
               <p className="mt-1 text-sm text-slate-500">
-                文档上传、解析和文本切分已开放，问答模块将逐步接入
+                文档处理、向量索引和语义检索已开放，AI 回答尚未接入
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
@@ -198,7 +198,12 @@ export function Dashboard() {
               status="已开放"
               to="/knowledge-bases"
             />
-            <QuickStep index={3} title="开始 AI 问答" status="未开放" />
+            <QuickStep
+              index={3}
+              title="语义检索"
+              status="已开放"
+              to="/chat"
+            />
           </div>
         </article>
 

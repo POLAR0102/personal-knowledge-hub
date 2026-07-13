@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     embedding_max_retries: int = 2
     chroma_persist_dir: Path = Path("./chroma_data")
     chroma_collection_name: str = "document_chunks"
+    semantic_search_top_k: int = 4
 
     model_config = SettingsConfigDict(
         env_file=".env",

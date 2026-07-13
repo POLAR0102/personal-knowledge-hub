@@ -41,6 +41,9 @@ export function getApiErrorMessage(
       'Vector store is not available': '向量数据库暂时不可用',
       'Unable to delete document vectors': '文档向量清理失败，已取消删除',
       'Unable to delete knowledge base vectors': '知识库向量清理失败，已取消删除',
+      'Unable to generate query embedding': '查询向量生成失败，请检查 Embedding 服务',
+      'Unable to search vector store': '向量检索失败，请稍后重试',
+      'Semantic search operation failed': '语义检索失败，请稍后重试',
     }
     return messages[detail] ?? detail
   }

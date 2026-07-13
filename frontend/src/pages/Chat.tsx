@@ -1,49 +1,195 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  createConversation,
+  deleteConversation,
+  getConversation,
+  listConversations,
+  sendConversationMessage,
+} from '../api/conversations'
 import { listKnowledgeBases } from '../api/knowledge-bases'
-import { queryKnowledgeBase } from '../api/rag'
 import { ChatInput } from '../components/chat/ChatInput'
-import { ChatMessage } from '../components/chat/ChatMessage'
-import { CitationList } from '../components/chat/CitationList'
-import { KnowledgeBaseSelector } from '../components/chat/KnowledgeBaseSelector'
+import { ConversationSidebar } from '../components/chat/ConversationSidebar'
+import { ConversationThread } from '../components/chat/ConversationThread'
+import { DeleteConversationDialog } from '../components/chat/DeleteConversationDialog'
+import { NewConversationDialog } from '../components/chat/NewConversationDialog'
+import type {
+  Conversation,
+  ConversationCreate,
+  ConversationDetail,
+  ConversationMessage,
+} from '../types/conversation'
 import type { KnowledgeBase } from '../types/knowledge-base'
-import type { RagQueryResponse } from '../types/rag'
 import { getApiErrorMessage } from '../utils/api-error'
 
+const CONVERSATION_PAGE_SIZE = 100
+
 export function Chat() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [conversationTotal, setConversationTotal] = useState(0)
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true)
+  const [conversationListError, setConversationListError] = useState<string | null>(null)
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null)
+  const [detail, setDetail] = useState<ConversationDetail | null>(null)
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const detailRequestId = useRef(0)
+
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
-  const [knowledgeBaseId, setKnowledgeBaseId] = useState<number | null>(null)
+  const [knowledgeBaseError, setKnowledgeBaseError] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [deletingConversation, setDeletingConversation] = useState<Conversation | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
   const [question, setQuestion] = useState('')
   const [topK, setTopK] = useState(4)
-  const [isLoadingKnowledgeBases, setIsLoadingKnowledgeBases] = useState(true)
-  const [knowledgeBaseError, setKnowledgeBaseError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingContent, setPendingContent] = useState<string | null>(null)
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null)
   const [queryError, setQueryError] = useState<string | null>(null)
-  const [submittedQuestion, setSubmittedQuestion] = useState<string | null>(null)
-  const [response, setResponse] = useState<RagQueryResponse | null>(null)
 
-  useEffect(() => {
-    setIsLoadingKnowledgeBases(true)
-    listKnowledgeBases({ page: 1, page_size: 100 })
-      .then((data) => {
-        setKnowledgeBases(data.items)
-        setKnowledgeBaseId(data.items[0]?.id ?? null)
+  const loadConversations = useCallback(async () => {
+    setIsLoadingConversations(true)
+    setConversationListError(null)
+    try {
+      const data = await listConversations({
+        page: 1,
+        page_size: CONVERSATION_PAGE_SIZE,
       })
-      .catch((error: unknown) => {
-        setKnowledgeBaseError(getApiErrorMessage(error, '知识库加载失败，请稍后重试'))
-      })
-      .finally(() => setIsLoadingKnowledgeBases(false))
+      setConversations(data.items)
+      setConversationTotal(data.total)
+    } catch (error: unknown) {
+      setConversationListError(
+        getApiErrorMessage(error, '会话列表加载失败，请稍后重试'),
+      )
+    } finally {
+      setIsLoadingConversations(false)
+    }
   }, [])
 
-  function handleKnowledgeBaseChange(id: number) {
-    setKnowledgeBaseId(id)
-    setSubmittedQuestion(null)
-    setResponse(null)
+  useEffect(() => {
+    void loadConversations()
+    listKnowledgeBases({ page: 1, page_size: 100 })
+      .then((data) => setKnowledgeBases(data.items))
+      .catch((error: unknown) => {
+        setKnowledgeBaseError(
+          getApiErrorMessage(error, '知识库加载失败，请稍后重试'),
+        )
+      })
+  }, [loadConversations])
+
+  useEffect(() => {
+    if (isLoadingConversations || conversationListError) return
+
+    const requestedId = Number(searchParams.get('conversation'))
+    const requestedConversation = conversations.find(
+      (conversation) => conversation.id === requestedId,
+    )
+    const nextId = requestedConversation?.id ?? conversations[0]?.id ?? null
+
+    setActiveConversationId(nextId)
+    if (nextId !== null && requestedId !== nextId) {
+      setSearchParams({ conversation: String(nextId) }, { replace: true })
+    } else if (nextId === null && searchParams.has('conversation')) {
+      setSearchParams({}, { replace: true })
+    }
+  }, [
+    conversations,
+    conversationListError,
+    isLoadingConversations,
+    searchParams,
+    setSearchParams,
+  ])
+
+  const loadDetail = useCallback(async (conversationId: number) => {
+    const requestId = ++detailRequestId.current
+    setIsLoadingDetail(true)
+    setDetailError(null)
+    try {
+      const data = await getConversation(conversationId)
+      if (requestId !== detailRequestId.current) return null
+      setDetail(data)
+      return data
+    } catch (error: unknown) {
+      if (requestId !== detailRequestId.current) return null
+      setDetail(null)
+      setDetailError(getApiErrorMessage(error, '会话内容加载失败，请稍后重试'))
+      return null
+    } finally {
+      if (requestId === detailRequestId.current) {
+        setIsLoadingDetail(false)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeConversationId === null) {
+      detailRequestId.current += 1
+      setDetail(null)
+      setDetailError(null)
+      return
+    }
+    void loadDetail(activeConversationId)
+  }, [activeConversationId, loadDetail])
+
+  function handleSelectConversation(conversationId: number) {
+    if (isSubmitting || conversationId === activeConversationId) return
+    setQuestion('')
     setQueryError(null)
+    setSearchParams({ conversation: String(conversationId) })
   }
 
-  async function handleQuery() {
-    const normalizedQuestion = question.trim()
-    if (isSubmitting || knowledgeBaseId === null || !normalizedQuestion) return
+  async function handleCreate(data: ConversationCreate) {
+    if (isCreating) return
+    setIsCreating(true)
+    setActionError(null)
+    try {
+      const created = await createConversation(data)
+      setConversations((current) => [
+        created,
+        ...current.filter((conversation) => conversation.id !== created.id),
+      ])
+      setConversationTotal((current) => current + 1)
+      setShowCreateDialog(false)
+      setSearchParams({ conversation: String(created.id) })
+    } catch (error: unknown) {
+      setActionError(getApiErrorMessage(error, '会话创建失败，请稍后重试'))
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deletingConversation || isDeleting) return
+    setIsDeleting(true)
+    setActionError(null)
+    try {
+      await deleteConversation(deletingConversation.id)
+      const remaining = conversations.filter(
+        (conversation) => conversation.id !== deletingConversation.id,
+      )
+      setConversations(remaining)
+      setConversationTotal((current) => Math.max(0, current - 1))
+      setDeletingConversation(null)
+      if (deletingConversation.id === activeConversationId) {
+        const nextId = remaining[0]?.id
+        setSearchParams(nextId ? { conversation: String(nextId) } : {})
+      }
+    } catch (error: unknown) {
+      setActionError(getApiErrorMessage(error, '会话删除失败，请稍后重试'))
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  async function submitMessage(
+    content: string,
+    clientRequestId: string,
+  ) {
+    if (isSubmitting || activeConversationId === null) return
     if (!Number.isInteger(topK) || topK < 1 || topK > 10) {
       setQueryError('检索片段数必须在 1 到 10 之间')
       return
@@ -51,98 +197,176 @@ export function Chat() {
 
     setIsSubmitting(true)
     setQueryError(null)
-    setSubmittedQuestion(normalizedQuestion)
-    setResponse(null)
+    setPendingContent(content)
+    setPendingRequestId(clientRequestId)
     try {
-      setResponse(
-        await queryKnowledgeBase({
-          knowledge_base_id: knowledgeBaseId,
-          question: normalizedQuestion,
-          top_k: topK,
-        }),
-      )
+      await sendConversationMessage(activeConversationId, {
+        content,
+        top_k: topK,
+        client_request_id: clientRequestId,
+      })
       setQuestion('')
+      await loadDetail(activeConversationId)
+      await loadConversations()
     } catch (error: unknown) {
-      setQueryError(getApiErrorMessage(error, '知识库问答失败，请稍后重试'))
+      setQueryError(getApiErrorMessage(error, '回答生成失败，可以稍后重试这条问题'))
+      await loadDetail(activeConversationId)
     } finally {
+      setPendingContent(null)
+      setPendingRequestId(null)
       setIsSubmitting(false)
     }
   }
 
-  const isFormDisabled = isLoadingKnowledgeBases || knowledgeBases.length === 0
+  function handleSend() {
+    const normalizedQuestion = question.trim()
+    if (!normalizedQuestion) return
+    void submitMessage(normalizedQuestion, crypto.randomUUID())
+  }
+
+  function handleRetry(message: ConversationMessage) {
+    if (!message.client_request_id) return
+    void submitMessage(message.content, message.client_request_id)
+  }
+
+  const selectedKnowledgeBase = useMemo(
+    () => knowledgeBases.find(
+      (knowledgeBase) => knowledgeBase.id === detail?.knowledge_base_id,
+    ),
+    [detail?.knowledge_base_id, knowledgeBases],
+  )
+  const lastMessage = detail?.messages.at(-1)
+  const hasUnresolvedMessage =
+    lastMessage?.role === 'user' &&
+    (lastMessage.request_status === 'processing' ||
+      lastMessage.request_status === 'failed')
 
   return (
     <div className="space-y-6">
       <section className="rounded-2xl bg-gradient-to-r from-slate-950 to-indigo-950 p-6 text-white shadow-sm sm:p-8">
-        <p className="text-sm font-medium text-indigo-300">阶段 D · RAG 问答</p>
+        <p className="text-sm font-medium text-indigo-300">阶段 E · 会话与历史记录</p>
         <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">知识库问答</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-          从已索引文档中检索相关内容并生成回答，引用信息来自真实文档片段。
+          问题、AI 回答和当时的真实引用会保存到会话中，刷新页面后仍可继续查看。
         </p>
         <p className="mt-2 text-xs text-slate-400">
-          当前仅支持单轮问答，不保存聊天历史；历史会话将在后续阶段接入。
+          当前每条问题都会独立执行 RAG 检索，历史消息暂不参与下一轮回答的 Prompt。
         </p>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        {knowledgeBaseError ? (
-          <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {knowledgeBaseError}
-          </p>
-        ) : isLoadingKnowledgeBases ? (
-          <p className="py-8 text-center text-sm text-slate-500">正在加载知识库…</p>
-        ) : knowledgeBases.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
-            请先创建知识库、上传并索引文档，再进行知识库问答。
-          </p>
-        ) : null}
+      {knowledgeBaseError && (
+        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {knowledgeBaseError}
+        </p>
+      )}
 
-        {!knowledgeBaseError && (
-          <div className="space-y-5">
-            <KnowledgeBaseSelector
-              knowledgeBases={knowledgeBases}
-              knowledgeBaseId={knowledgeBaseId}
-              disabled={isFormDisabled || isSubmitting}
-              onChange={handleKnowledgeBaseChange}
-            />
-            <ChatInput
-              question={question}
-              topK={topK}
-              isSubmitting={isSubmitting}
-              disabled={isFormDisabled}
-              onQuestionChange={setQuestion}
-              onTopKChange={setTopK}
-              onSubmit={() => void handleQuery()}
-            />
-          </div>
-        )}
+      <section className="grid items-start gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <ConversationSidebar
+          conversations={conversations}
+          total={conversationTotal}
+          activeConversationId={activeConversationId}
+          disabled={isSubmitting}
+          isLoading={isLoadingConversations}
+          error={conversationListError}
+          onCreate={() => {
+            setActionError(null)
+            setShowCreateDialog(true)
+          }}
+          onSelect={handleSelectConversation}
+          onDelete={(conversation) => {
+            setActionError(null)
+            setDeletingConversation(conversation)
+          }}
+          onRetry={() => void loadConversations()}
+        />
 
-        {queryError && (
-          <p className="mt-5 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {queryError}
-          </p>
-        )}
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          {activeConversationId === null ? (
+            <div className="flex min-h-96 items-center justify-center text-center">
+              <div>
+                <p className="font-semibold text-slate-800">选择或新建一个问答会话</p>
+                <p className="mt-2 text-sm text-slate-400">新建会话时需要选择本次问答使用的知识库。</p>
+              </div>
+            </div>
+          ) : isLoadingDetail ? (
+            <p className="py-24 text-center text-sm text-slate-400">正在加载会话消息…</p>
+          ) : detailError || !detail ? (
+            <div className="py-20 text-center">
+              <p className="text-sm text-rose-700">{detailError || '会话不存在'}</p>
+              <button
+                type="button"
+                onClick={() => void loadDetail(activeConversationId)}
+                className="mt-4 rounded-lg border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+              >
+                重新加载
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <header className="border-b border-slate-100 pb-4">
+                <h3 className="break-words text-lg font-semibold text-slate-900">{detail.title}</h3>
+                <p className="mt-1 text-xs text-slate-400">
+                  知识库：{selectedKnowledgeBase?.name ?? `#${detail.knowledge_base_id}`}
+                </p>
+              </header>
+
+              <ConversationThread
+                messages={detail.messages}
+                isSubmitting={isSubmitting}
+                pendingContent={pendingContent}
+                pendingRequestId={pendingRequestId}
+                onRetry={handleRetry}
+              />
+
+              {queryError && (
+                <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{queryError}</p>
+              )}
+              {hasUnresolvedMessage && lastMessage?.request_status === 'failed' && (
+                <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  上一条问题生成失败，请先点击消息下方的“重新尝试”。
+                </p>
+              )}
+
+              <div className="border-t border-slate-100 pt-5">
+                <ChatInput
+                  question={question}
+                  topK={topK}
+                  isSubmitting={isSubmitting}
+                  disabled={hasUnresolvedMessage}
+                  onQuestionChange={setQuestion}
+                  onTopKChange={setTopK}
+                  onSubmit={handleSend}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
-      {submittedQuestion && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="space-y-5">
-            <ChatMessage role="user" content={submittedQuestion} />
-            {isSubmitting ? (
-              <ChatMessage role="assistant" isLoading />
-            ) : response ? (
-              <>
-                <ChatMessage role="assistant" content={response.answer} />
-                <div className="ml-0 space-y-3 sm:ml-12">
-                  <CitationList citations={response.citations} />
-                  <p className="text-xs text-slate-400">
-                    检索到 {response.retrieval_count} 个相关片段 · 模型：{response.model}
-                  </p>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </section>
+      {showCreateDialog && (
+        <NewConversationDialog
+          knowledgeBases={knowledgeBases}
+          isSubmitting={isCreating}
+          error={actionError}
+          onSubmit={handleCreate}
+          onCancel={() => {
+            setShowCreateDialog(false)
+            setActionError(null)
+          }}
+        />
+      )}
+
+      {deletingConversation && (
+        <DeleteConversationDialog
+          conversation={deletingConversation}
+          isDeleting={isDeleting}
+          error={actionError}
+          onConfirm={() => void handleDelete()}
+          onCancel={() => {
+            setDeletingConversation(null)
+            setActionError(null)
+          }}
+        />
       )}
     </div>
   )

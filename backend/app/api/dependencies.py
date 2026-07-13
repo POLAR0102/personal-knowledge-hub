@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -26,6 +27,22 @@ from app.db.session import get_db
 from app.repositories.user import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+RAGProviderLoader = Callable[
+    [],
+    tuple[EmbeddingProvider, VectorStore, ChatModelProvider],
+]
+
+
+def load_rag_providers() -> tuple[
+    EmbeddingProvider,
+    VectorStore,
+    ChatModelProvider,
+]:
+    return get_embedding_provider(), get_vector_store(), get_chat_model_provider()
+
+
+def get_conversation_rag_provider_loader_dependency() -> RAGProviderLoader:
+    return load_rag_providers
 
 
 def get_embedding_provider_dependency() -> EmbeddingProvider:

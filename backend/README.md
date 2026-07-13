@@ -1,6 +1,6 @@
 # Personal Knowledge Hub API
 
-“基于 RAG 与 Agent 的智能个人知识库系统”的 FastAPI 后端。当前已完成用户认证、知识库 CRUD、文档处理、本地向量索引、语义检索和带真实引用的单轮 RAG 问答。
+“基于 RAG 与 Agent 的智能个人知识库系统”的 FastAPI 后端。当前已完成用户认证、知识库 CRUD、文档处理、本地向量索引、语义检索，以及带真实引用和历史记录的 RAG 问答。
 
 ## 环境要求
 
@@ -71,7 +71,7 @@ alembic upgrade head
 - 重复处理会替换旧片段，不会累积重复数据
 - 本地 Embedding 写入持久化 ChromaDB，支持重复索引、索引健康检查和按用户、知识库隔离的语义检索
 - RAG 问答只使用检索到的上下文，并根据模型返回的来源编号映射真实文档引用
-- 当前仍不支持扫描版 PDF OCR、聊天历史、Agent 和笔记生成
+- 当前仍不支持扫描版 PDF OCR、Agent 和笔记生成
 
 ## DeepSeek API Key
 
@@ -87,6 +87,6 @@ CHAT_MODEL=deepseek-v4-flash
 
 真实 DeepSeek Key 不能写入 `.env.example`，也不要发送到前端或日志。后端使用独立的 `CHAT_*` 配置，避免与 Embedding 配置混用。
 
-当前问答接口为单轮调用，不保存历史会话；会话持久化将在后续阶段实现。
+问答会话会保存用户消息、AI 回答和当时的引用快照。当前每条问题仍独立执行 RAG，历史消息暂不加入下一轮 Prompt。
 
 切换 Embedding 模型后，必须重新为已有文档建立索引，不能混用不同维度或不同模型生成的向量。

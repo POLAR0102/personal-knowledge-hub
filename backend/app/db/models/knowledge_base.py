@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.db.models.conversation import Conversation
     from app.db.models.document import Document
     from app.db.models.document_chunk import DocumentChunk
     from app.db.models.user import User
@@ -51,6 +52,11 @@ class KnowledgeBase(Base):
         passive_deletes=True,
     )
     document_chunks: Mapped[list["DocumentChunk"]] = relationship(
+        back_populates="knowledge_base",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    conversations: Mapped[list["Conversation"]] = relationship(
         back_populates="knowledge_base",
         cascade="all, delete-orphan",
         passive_deletes=True,

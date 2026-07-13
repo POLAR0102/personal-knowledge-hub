@@ -49,6 +49,15 @@ export function getApiErrorMessage(
       'Unable to generate answer': 'AI 回答生成失败，请稍后重试',
       'Unable to generate RAG answer': 'AI 回答生成失败，请稍后重试',
       'RAG query operation failed': '知识库问答失败，请稍后重试',
+      'Conversation not found': '会话不存在或无权访问',
+      'Conversation operation failed': '会话操作失败，请稍后重试',
+      'RAG service is not configured': 'RAG 服务尚未配置',
+      'Unable to load RAG services': 'RAG 服务加载失败，请稍后重试',
+      'Unable to generate conversation response': 'AI 回答生成失败，请稍后重试',
+      'Message request is already processing': '这条问题正在处理中，请勿重复提交',
+      'client_request_id was already used for different content': '请求标识已被其他问题使用，请重新发送',
+      'Previous message must be retried before sending a new question': '请先重试上一条失败的问题',
+      'Duplicate message request': '重复的消息请求已被拦截，请稍后重试',
     }
     return messages[detail] ?? detail
   }

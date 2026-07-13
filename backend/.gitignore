@@ -6,3 +6,4 @@ __pycache__/
 *.sqlite3
 uploads/
 chroma_data/
+model_cache/

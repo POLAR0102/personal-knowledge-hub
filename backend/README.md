@@ -1,6 +1,6 @@
 # Personal Knowledge Hub API
 
-“基于 RAG 与 Agent 的智能个人知识库系统”的 FastAPI 后端。当前已完成用户认证、知识库 CRUD 和文档上传管理基础。
+“基于 RAG 与 Agent 的智能个人知识库系统”的 FastAPI 后端。当前已完成用户认证、知识库 CRUD、文档处理、本地向量索引和语义检索。
 
 ## 环境要求
 
@@ -21,6 +21,8 @@ Copy-Item .env.example .env
 请在 `.env` 中将 `JWT_SECRET_KEY` 替换为本地生成的随机密钥。不要将真实密钥提交到 Git。
 
 文档默认保存在 `UPLOAD_DIR=./uploads`，单文件大小由 `MAX_UPLOAD_SIZE_MB=20` 控制。
+
+默认使用 `BAAI/bge-small-zh-v1.5` 本地模型生成 Embedding，不需要 Embedding API Key。第一次建立索引时会下载约 90MB 的模型到 `LOCAL_EMBEDDING_CACHE_DIR=./model_cache`，之后可以直接使用本地缓存。
 
 ## 启动
 
@@ -67,4 +69,13 @@ alembic upgrade head
 - 用户可手动启动 TXT、Markdown、文本型 PDF 和 DOCX 解析
 - 解析成功后生成带页码、标题和 offset 的文本片段
 - 重复处理会替换旧片段，不会累积重复数据
-- 当前阶段不执行 OCR、Embedding、向量存储或 RAG
+- 本地 Embedding 写入持久化 ChromaDB，支持重复索引、索引健康检查和按用户、知识库隔离的语义检索
+- 当前仍不支持扫描版 PDF OCR，也尚未调用聊天模型生成自然语言答案
+
+## DeepSeek API Key
+
+DeepSeek 官方 Key 用于后续的聊天回答阶段，不用于文档 Embedding。当前索引已经使用本地模型，因此不要把 DeepSeek Key 填入 `AI_API_KEY`。
+
+真实 DeepSeek Key 只能保存在被 Git 忽略的 `.env` 中，不能写入 `.env.example`。等聊天回答模块接入时，将使用独立的 Chat 配置，避免和 Embedding 配置混用。
+
+切换 Embedding 模型后，必须重新为已有文档建立索引，不能混用不同维度或不同模型生成的向量。

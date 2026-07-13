@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     embedding_batch_size: int = 32
     embedding_timeout_seconds: float = 30.0
     embedding_max_retries: int = 2
+    local_embedding_cache_dir: Path = Path("./model_cache")
     chroma_persist_dir: Path = Path("./chroma_data")
     chroma_collection_name: str = "document_chunks"
     semantic_search_top_k: int = 4

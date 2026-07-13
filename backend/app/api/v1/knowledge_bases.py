@@ -3,7 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.ai.embeddings import EmbeddingProvider
+from app.ai.vector_store import VectorStore
+from app.api.dependencies import (
+    get_current_user,
+    get_embedding_provider_dependency,
+    get_vector_store_dependency,
+)
+from app.core.config import get_settings
 from app.db.models import User
 from app.db.session import get_db
 from app.schemas.knowledge_base import (
@@ -11,6 +18,16 @@ from app.schemas.knowledge_base import (
     KnowledgeBaseList,
     KnowledgeBaseRead,
     KnowledgeBaseUpdate,
+)
+from app.schemas.index_maintenance import (
+    KnowledgeBaseReindexItem,
+    KnowledgeBaseReindexResponse,
+)
+from app.services.index_maintenance import (
+    IndexMaintenanceDatabaseError,
+    KnowledgeBaseNotFoundError as ReindexKnowledgeBaseNotFoundError,
+    KnowledgeBaseReindexLimitError,
+    reindex_knowledge_base,
 )
 from app.services.knowledge_base import (
     KnowledgeBaseDatabaseError,
@@ -75,6 +92,53 @@ def list_all(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.post(
+    "/{knowledge_base_id}/reindex",
+    response_model=KnowledgeBaseReindexResponse,
+)
+def reindex(
+    knowledge_base_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    embedding_provider: Annotated[
+        EmbeddingProvider,
+        Depends(get_embedding_provider_dependency),
+    ],
+    vector_store: Annotated[VectorStore, Depends(get_vector_store_dependency)],
+) -> KnowledgeBaseReindexResponse:
+    try:
+        result = reindex_knowledge_base(
+            db,
+            current_user,
+            knowledge_base_id,
+            embedding_provider=embedding_provider,
+            vector_store=vector_store,
+            document_limit=get_settings().knowledge_base_reindex_limit,
+        )
+    except ReindexKnowledgeBaseNotFoundError as exc:
+        raise not_found_error() from exc
+    except KnowledgeBaseReindexLimitError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except IndexMaintenanceDatabaseError as exc:
+        raise database_error() from exc
+    return KnowledgeBaseReindexResponse(
+        knowledge_base_id=result.knowledge_base_id,
+        total=len(result.items),
+        succeeded=result.succeeded,
+        failed=result.failed,
+        items=[
+            KnowledgeBaseReindexItem(
+                document_id=item.document_id,
+                original_filename=item.original_filename,
+                index_status=item.index_status,
+                vector_count=item.vector_count,
+                error_message=item.error_message,
+            )
+            for item in result.items
+        ],
     )
 
 

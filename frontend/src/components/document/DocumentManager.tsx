@@ -13,6 +13,7 @@ import { DocumentChunksDialog } from './DocumentChunksDialog'
 import { DocumentList } from './DocumentList'
 import { DocumentIndexStatusDialog } from './DocumentIndexStatusDialog'
 import { DocumentUploader } from './DocumentUploader'
+import { KnowledgeBaseReindexDialog } from './KnowledgeBaseReindexDialog'
 
 const PAGE_SIZE = 10
 
@@ -38,6 +39,7 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
   const [indexError, setIndexError] = useState<string | null>(null)
   const [viewingDocument, setViewingDocument] = useState<KnowledgeDocument | null>(null)
   const [viewingIndexDocument, setViewingIndexDocument] = useState<KnowledgeDocument | null>(null)
+  const [isReindexDialogOpen, setIsReindexDialogOpen] = useState(false)
 
   const loadItems = useCallback(async () => {
     setIsLoading(true)
@@ -142,9 +144,19 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
             上传资料并管理处理状态，当前共 {total} 个文档
           </p>
         </div>
-        <span className="w-fit rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-          上传后等待解析
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-fit rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+            上传后等待解析
+          </span>
+          <button
+            type="button"
+            disabled={total === 0 || isLoading}
+            onClick={() => setIsReindexDialogOpen(true)}
+            className="rounded-lg border border-violet-200 px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            批量重新索引
+          </button>
+        </div>
       </div>
 
       <div className="mt-6">
@@ -256,6 +268,14 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
         <DocumentIndexStatusDialog
           document={viewingIndexDocument}
           onClose={() => setViewingIndexDocument(null)}
+        />
+      )}
+
+      {isReindexDialogOpen && (
+        <KnowledgeBaseReindexDialog
+          knowledgeBaseId={knowledgeBaseId}
+          onCompleted={() => void loadItems()}
+          onClose={() => setIsReindexDialogOpen(false)}
         />
       )}
     </section>

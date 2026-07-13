@@ -23,3 +23,19 @@ export interface KnowledgeBaseListResponse {
   page: number
   page_size: number
 }
+
+export interface KnowledgeBaseReindexItem {
+  document_id: number
+  original_filename: string
+  index_status: 'indexed' | 'failed'
+  vector_count: number
+  error_message: string | null
+}
+
+export interface KnowledgeBaseReindexResponse {
+  knowledge_base_id: number
+  total: number
+  succeeded: number
+  failed: number
+  items: KnowledgeBaseReindexItem[]
+}

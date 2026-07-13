@@ -100,6 +100,7 @@ class FakeVectorStore(VectorStore):
         user_id: int,
         knowledge_base_id: int,
         top_k: int,
+        embedding_model: str | None = None,
     ) -> list[SearchResult]:
         return []
 

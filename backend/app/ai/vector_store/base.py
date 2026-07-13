@@ -28,6 +28,7 @@ class VectorRecord:
     filename: str
     content: str
     content_hash: str
+    embedding_model: str
     embedding: list[float]
     page_number: int | None = None
     section_title: str | None = None
@@ -75,6 +76,7 @@ class VectorStore(ABC):
         user_id: int,
         knowledge_base_id: int,
         top_k: int,
+        embedding_model: str | None = None,
     ) -> list[SearchResult]:
         """Search within one user and one knowledge base."""
 

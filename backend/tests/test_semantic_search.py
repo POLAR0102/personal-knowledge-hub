@@ -41,7 +41,7 @@ class SearchEmbeddingProvider(EmbeddingProvider):
 class SearchVectorStore(VectorStore):
     def __init__(self) -> None:
         self.results: list[SearchResult] = []
-        self.search_calls: list[tuple[list[float], int, int, int]] = []
+        self.search_calls: list[tuple[list[float], int, int, int, str | None]] = []
         self.fail = False
 
     def upsert_chunks(self, records: list[VectorRecord]) -> None:
@@ -63,8 +63,11 @@ class SearchVectorStore(VectorStore):
         user_id: int,
         knowledge_base_id: int,
         top_k: int,
+        embedding_model: str | None = None,
     ) -> list[SearchResult]:
-        self.search_calls.append((query_vector, user_id, knowledge_base_id, top_k))
+        self.search_calls.append(
+            (query_vector, user_id, knowledge_base_id, top_k, embedding_model)
+        )
         if self.fail:
             raise VectorStoreOperationError("mock vector search failure")
         return self.results[:top_k]
@@ -191,7 +194,7 @@ def test_semantic_search_returns_real_chunk_fields_in_order(
     }
     assert provider.queries == ["核心版本需要多久？"]
     assert vector_store.search_calls == [
-        ([1.0, 0.0], 1, knowledge_base_id, 4)
+        ([1.0, 0.0], 1, knowledge_base_id, 4, "test-search-model")
     ]
 
 

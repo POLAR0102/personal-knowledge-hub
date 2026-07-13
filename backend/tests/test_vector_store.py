@@ -32,6 +32,7 @@ def make_record(
     embedding: list[float] | None = None,
     page_number: int | None = None,
     section_title: str | None = None,
+    embedding_model: str = "test-embedding-model",
 ) -> VectorRecord:
     return VectorRecord(
         chunk_id=chunk_id,
@@ -42,6 +43,7 @@ def make_record(
         filename=f"document-{document_id}.txt",
         content=content or f"content {chunk_id}",
         content_hash=f"hash-{chunk_id}",
+        embedding_model=embedding_model,
         embedding=embedding or [1.0, 0.0],
         page_number=page_number,
         section_title=section_title,
@@ -160,6 +162,32 @@ def test_search_isolates_knowledge_bases(
     results = vector_store.search([1.0, 0.0], user_id=1, knowledge_base_id=2, top_k=4)
 
     assert [result.content for result in results] == ["knowledge base two"]
+
+
+def test_search_can_isolate_embedding_models(
+    vector_store: ChromaVectorStore,
+) -> None:
+    vector_store.upsert_chunks(
+        [
+            make_record(1, content="current model"),
+            make_record(
+                2,
+                document_id=2,
+                content="old model",
+                embedding_model="old-embedding-model",
+            ),
+        ]
+    )
+
+    results = vector_store.search(
+        [1.0, 0.0],
+        user_id=1,
+        knowledge_base_id=1,
+        top_k=4,
+        embedding_model="test-embedding-model",
+    )
+
+    assert [result.content for result in results] == ["current model"]
 
 
 def test_delete_by_document_is_scoped_to_user(

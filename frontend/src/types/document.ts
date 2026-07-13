@@ -58,6 +58,26 @@ export interface DocumentIndexStatusResponse {
   index_error_message: string | null
 }
 
+export type IndexHealthStatus =
+  | 'healthy'
+  | 'missing_vectors'
+  | 'extra_vectors'
+  | 'model_mismatch'
+  | 'not_indexed'
+  | 'failed'
+
+export interface DocumentIndexHealthResponse {
+  document_id: number
+  index_status: DocumentIndexStatus
+  health_status: IndexHealthStatus
+  chunk_count: number
+  vector_count: number
+  embedding_model: string | null
+  current_embedding_model: string
+  indexed_at: string | null
+  index_error_message: string | null
+}
+
 export interface DocumentChunk {
   id: number
   document_id: number

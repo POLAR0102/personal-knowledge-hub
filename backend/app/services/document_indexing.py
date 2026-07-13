@@ -206,6 +206,7 @@ def index_document(
                     filename=original_filename,
                     content=chunk.content,
                     content_hash=chunk.content_hash,
+                    embedding_model=embedding_provider.model_name,
                     embedding=embedding,
                     page_number=chunk.page_number,
                     section_title=chunk.section_title,

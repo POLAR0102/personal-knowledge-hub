@@ -61,7 +61,7 @@ export function DocumentIndexActions({
           onClick={() => onViewStatus(document)}
           className="rounded-lg border border-violet-200 px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50"
         >
-          索引详情
+          索引健康
         </button>
       )}
     </div>

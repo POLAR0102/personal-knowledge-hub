@@ -107,6 +107,7 @@ class ChromaVectorStore(VectorStore):
         user_id: int,
         knowledge_base_id: int,
         top_k: int,
+        embedding_model: str | None = None,
     ) -> list[SearchResult]:
         self._validate_vector(query_vector)
         if not 1 <= top_k <= 20:
@@ -116,11 +117,10 @@ class ChromaVectorStore(VectorStore):
             response = self._collection.query(
                 query_embeddings=[query_vector],
                 n_results=top_k,
-                where=self._combined_filter(
-                    "user_id",
-                    user_id,
-                    "knowledge_base_id",
-                    knowledge_base_id,
+                where=self._search_filter(
+                    user_id=user_id,
+                    knowledge_base_id=knowledge_base_id,
+                    embedding_model=embedding_model,
                 ),
                 include=["documents", "metadatas", "distances"],
             )
@@ -180,6 +180,7 @@ class ChromaVectorStore(VectorStore):
             "chunk_index": record.chunk_index,
             "filename": record.filename,
             "content_hash": record.content_hash,
+            "embedding_model": record.embedding_model,
         }
         if record.page_number is not None:
             metadata["page_number"] = record.page_number
@@ -200,6 +201,21 @@ class ChromaVectorStore(VectorStore):
                 {second_key: {"$eq": second_value}},
             ]
         }
+
+    @staticmethod
+    def _search_filter(
+        *,
+        user_id: int,
+        knowledge_base_id: int,
+        embedding_model: str | None,
+    ) -> Where:
+        filters: list[Where] = [
+            {"user_id": {"$eq": user_id}},
+            {"knowledge_base_id": {"$eq": knowledge_base_id}},
+        ]
+        if embedding_model is not None:
+            filters.append({"embedding_model": {"$eq": embedding_model}})
+        return {"$and": filters}
 
     @staticmethod
     def _validate_records(records: list[VectorRecord]) -> None:

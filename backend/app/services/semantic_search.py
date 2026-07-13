@@ -79,6 +79,7 @@ def semantic_search(
             owner.id,
             knowledge_base.id,
             resolved_top_k,
+            embedding_provider.model_name,
         )
     except EmbeddingError as exc:
         logger.warning(

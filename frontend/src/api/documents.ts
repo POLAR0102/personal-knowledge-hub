@@ -4,6 +4,7 @@ import type {
   DocumentListResponse,
   DocumentChunkListResponse,
   DocumentIndexResult,
+  DocumentIndexHealthResponse,
   DocumentIndexStatusResponse,
   DocumentProcessResult,
   DocumentStats,
@@ -81,6 +82,16 @@ export async function getDocumentIndexStatus(
 ): Promise<DocumentIndexStatusResponse> {
   const response = await apiClient.get<DocumentIndexStatusResponse>(
     `/documents/${id}/index-status`,
+    { timeout: 30_000 },
+  )
+  return response.data
+}
+
+export async function getDocumentIndexHealth(
+  id: number,
+): Promise<DocumentIndexHealthResponse> {
+  const response = await apiClient.get<DocumentIndexHealthResponse>(
+    `/documents/${id}/index-health`,
     { timeout: 30_000 },
   )
   return response.data

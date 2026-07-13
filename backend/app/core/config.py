@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     chroma_persist_dir: Path = Path("./chroma_data")
     chroma_collection_name: str = "document_chunks"
     semantic_search_top_k: int = 4
+    knowledge_base_reindex_limit: int = 50
 
     model_config = SettingsConfigDict(
         env_file=".env",

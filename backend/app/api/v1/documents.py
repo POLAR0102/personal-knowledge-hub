@@ -10,6 +10,7 @@ from app.api.dependencies import (
     get_embedding_provider_dependency,
     get_vector_store_dependency,
 )
+from app.core.config import get_settings
 from app.db.models import DocumentStatus, User
 from app.db.session import get_db
 from app.schemas.document import (
@@ -21,6 +22,7 @@ from app.schemas.document import (
     DocumentStats,
 )
 from app.schemas.document_chunk import DocumentChunkList, DocumentChunkRead
+from app.schemas.index_maintenance import DocumentIndexHealthRead
 from app.services.document import (
     DocumentDatabaseError,
     DocumentIndexingInProgressError,
@@ -57,6 +59,11 @@ from app.services.document_indexing import (
     DocumentNotReadyForIndexError,
     get_document_index_status,
     index_document,
+)
+from app.services.index_maintenance import (
+    IndexMaintenanceDatabaseError,
+    IndexMaintenanceDependencyError,
+    get_document_index_health,
 )
 
 router = APIRouter(tags=["documents"])
@@ -264,6 +271,46 @@ def index_status(
         chunk_count=result.chunk_count,
         vector_count=result.vector_count,
         embedding_model=result.document.embedding_model,
+        indexed_at=result.document.indexed_at,
+        index_error_message=result.document.index_error_message,
+    )
+
+
+@router.get(
+    "/documents/{document_id}/index-health",
+    response_model=DocumentIndexHealthRead,
+)
+def index_health(
+    document_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    vector_store: Annotated[VectorStore, Depends(get_vector_store_dependency)],
+) -> DocumentIndexHealthRead:
+    try:
+        result = get_document_index_health(
+            db,
+            current_user,
+            document_id,
+            vector_store,
+            get_settings().embedding_model,
+        )
+    except IndexingDocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except IndexMaintenanceDependencyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Vector store is not available",
+        ) from exc
+    except IndexMaintenanceDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentIndexHealthRead(
+        document_id=result.document.id,
+        index_status=result.document.index_status,
+        health_status=result.health_status,
+        chunk_count=result.chunk_count,
+        vector_count=result.vector_count,
+        embedding_model=result.document.embedding_model,
+        current_embedding_model=result.current_embedding_model,
         indexed_at=result.document.indexed_at,
         index_error_message=result.document.index_error_message,
     )

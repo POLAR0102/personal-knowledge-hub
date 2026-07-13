@@ -3,6 +3,7 @@ import type {
   KnowledgeBase,
   KnowledgeBaseCreate,
   KnowledgeBaseListResponse,
+  KnowledgeBaseReindexResponse,
   KnowledgeBaseUpdate,
 } from '../types/knowledge-base'
 
@@ -46,4 +47,15 @@ export async function updateKnowledgeBase(
 
 export async function deleteKnowledgeBase(id: number): Promise<void> {
   await apiClient.delete(`/knowledge-bases/${id}`)
+}
+
+export async function reindexKnowledgeBase(
+  id: number,
+): Promise<KnowledgeBaseReindexResponse> {
+  const response = await apiClient.post<KnowledgeBaseReindexResponse>(
+    `/knowledge-bases/${id}/reindex`,
+    undefined,
+    { timeout: 120_000 },
+  )
+  return response.data
 }

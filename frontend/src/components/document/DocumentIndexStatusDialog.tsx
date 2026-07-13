@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getDocumentIndexStatus } from '../../api/documents'
+import { getDocumentIndexHealth } from '../../api/documents'
 import type {
-  DocumentIndexStatusResponse,
+  DocumentIndexHealthResponse,
   KnowledgeDocument,
 } from '../../types/document'
 import { getApiErrorMessage } from '../../utils/api-error'
@@ -12,11 +12,20 @@ interface DocumentIndexStatusDialogProps {
   onClose: () => void
 }
 
+const healthLabels = {
+  healthy: '索引健康',
+  missing_vectors: '缺少向量，需要重新索引',
+  extra_vectors: '存在多余向量，需要重新索引',
+  model_mismatch: 'Embedding 模型已变化，需要重新索引',
+  not_indexed: '尚未建立索引',
+  failed: '索引失败',
+}
+
 export function DocumentIndexStatusDialog({
   document,
   onClose,
 }: DocumentIndexStatusDialogProps) {
-  const [status, setStatus] = useState<DocumentIndexStatusResponse | null>(null)
+  const [status, setStatus] = useState<DocumentIndexHealthResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,7 +33,7 @@ export function DocumentIndexStatusDialog({
     setIsLoading(true)
     setError(null)
     try {
-      setStatus(await getDocumentIndexStatus(document.id))
+      setStatus(await getDocumentIndexHealth(document.id))
     } catch (requestError: unknown) {
       setError(getApiErrorMessage(requestError, '索引状态加载失败，请稍后重试'))
     } finally {
@@ -72,8 +81,10 @@ export function DocumentIndexStatusDialog({
         ) : status ? (
           <dl className="mt-6 grid gap-4 rounded-xl bg-slate-50 p-5 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-slate-400">解析状态</dt>
-              <dd className="mt-1 font-medium text-slate-700">{status.processing_status}</dd>
+              <dt className="text-slate-400">健康状态</dt>
+              <dd className="mt-1 font-medium text-slate-700">
+                {healthLabels[status.health_status]}
+              </dd>
             </div>
             <div>
               <dt className="text-slate-400">索引状态</dt>
@@ -88,9 +99,15 @@ export function DocumentIndexStatusDialog({
               <dd className="mt-1 font-medium text-slate-700">{status.vector_count}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-slate-400">Embedding 模型</dt>
+              <dt className="text-slate-400">索引使用的 Embedding 模型</dt>
               <dd className="mt-1 break-all font-medium text-slate-700">
                 {status.embedding_model || '尚未记录'}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-slate-400">当前配置模型</dt>
+              <dd className="mt-1 break-all font-medium text-slate-700">
+                {status.current_embedding_model}
               </dd>
             </div>
             <div className="sm:col-span-2">

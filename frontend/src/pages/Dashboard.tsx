@@ -147,11 +147,11 @@ export function Dashboard() {
             你的智能知识工作台
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-            在这里管理个人资料、建立向量索引，并检索真实文档片段。
+            在这里管理个人资料、建立向量索引，并基于真实文档引用进行问答。
           </p>
         </div>
         <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-          当前阶段：向量索引与语义检索
+          当前阶段：RAG 问答与真实引用
         </span>
       </section>
 
@@ -169,7 +169,7 @@ export function Dashboard() {
           to="/knowledge-bases"
         />
         <SummaryCard label="笔记" value="—" caption="笔记模块尚未接入" />
-        <SummaryCard label="问答会话" value="—" caption="问答模块尚未接入" />
+        <SummaryCard label="问答会话" value="—" caption="当前仅支持单轮问答" />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -178,7 +178,7 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-semibold text-slate-900">开始使用</p>
               <p className="mt-1 text-sm text-slate-500">
-                文档处理、向量索引和语义检索已开放，AI 回答尚未接入
+                文档处理、向量索引和带真实引用的 RAG 问答已开放
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
@@ -200,7 +200,7 @@ export function Dashboard() {
             />
             <QuickStep
               index={3}
-              title="语义检索"
+              title="知识库问答"
               status="已开放"
               to="/chat"
             />

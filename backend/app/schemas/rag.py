@@ -30,3 +30,35 @@ class SemanticSearchResponse(BaseModel):
     query: str
     knowledge_base_id: int
     results: list[SemanticSearchResultRead]
+
+
+QuestionText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=1000),
+]
+
+
+class RAGQueryRequest(BaseModel):
+    knowledge_base_id: Annotated[int, Field(gt=0)]
+    question: QuestionText
+    top_k: Annotated[int, Field(ge=1, le=10)] = 4
+
+
+class RAGCitationRead(BaseModel):
+    source_number: int
+    chunk_id: int
+    document_id: int
+    filename: str
+    content: str
+    chunk_index: int
+    page_number: int | None
+    section_title: str | None
+    distance: float
+
+
+class RAGQueryResponse(BaseModel):
+    answer: str
+    knowledge_base_id: int
+    citations: list[RAGCitationRead]
+    retrieval_count: int
+    model: str

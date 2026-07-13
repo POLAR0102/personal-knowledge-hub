@@ -44,6 +44,11 @@ export function getApiErrorMessage(
       'Unable to generate query embedding': '查询向量生成失败，请检查 Embedding 服务',
       'Unable to search vector store': '向量检索失败，请稍后重试',
       'Semantic search operation failed': '语义检索失败，请稍后重试',
+      'Chat model is not configured': 'Chat Model 尚未配置',
+      'Chat model service is not configured': 'Chat Model 尚未配置',
+      'Unable to generate answer': 'AI 回答生成失败，请稍后重试',
+      'Unable to generate RAG answer': 'AI 回答生成失败，请稍后重试',
+      'RAG query operation failed': '知识库问答失败，请稍后重试',
     }
     return messages[detail] ?? detail
   }

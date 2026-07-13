@@ -3,6 +3,7 @@ import type {
   SemanticSearchRequest,
   SemanticSearchResponse,
 } from '../types/semantic-search'
+import type { RagQueryRequest, RagQueryResponse } from '../types/rag'
 
 export async function semanticSearch(
   data: SemanticSearchRequest,
@@ -12,5 +13,14 @@ export async function semanticSearch(
     data,
     { timeout: 60_000 },
   )
+  return response.data
+}
+
+export async function queryKnowledgeBase(
+  data: RagQueryRequest,
+): Promise<RagQueryResponse> {
+  const response = await apiClient.post<RagQueryResponse>('/rag/query', data, {
+    timeout: 210_000,
+  })
   return response.data
 }

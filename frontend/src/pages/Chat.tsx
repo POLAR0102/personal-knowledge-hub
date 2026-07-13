@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react'
 import { listKnowledgeBases } from '../api/knowledge-bases'
-import { semanticSearch } from '../api/rag'
-import { SemanticSearchForm } from '../components/semantic-search/SemanticSearchForm'
-import { SemanticSearchResults } from '../components/semantic-search/SemanticSearchResults'
+import { queryKnowledgeBase } from '../api/rag'
+import { ChatInput } from '../components/chat/ChatInput'
+import { ChatMessage } from '../components/chat/ChatMessage'
+import { CitationList } from '../components/chat/CitationList'
+import { KnowledgeBaseSelector } from '../components/chat/KnowledgeBaseSelector'
 import type { KnowledgeBase } from '../types/knowledge-base'
-import type { SemanticSearchResponse } from '../types/semantic-search'
+import type { RagQueryResponse } from '../types/rag'
 import { getApiErrorMessage } from '../utils/api-error'
 
 export function Chat() {
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
   const [knowledgeBaseId, setKnowledgeBaseId] = useState<number | null>(null)
-  const [query, setQuery] = useState('')
+  const [question, setQuestion] = useState('')
   const [topK, setTopK] = useState(4)
   const [isLoadingKnowledgeBases, setIsLoadingKnowledgeBases] = useState(true)
   const [knowledgeBaseError, setKnowledgeBaseError] = useState<string | null>(null)
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchError, setSearchError] = useState<string | null>(null)
-  const [response, setResponse] = useState<SemanticSearchResponse | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [queryError, setQueryError] = useState<string | null>(null)
+  const [submittedQuestion, setSubmittedQuestion] = useState<string | null>(null)
+  const [response, setResponse] = useState<RagQueryResponse | null>(null)
 
   useEffect(() => {
     setIsLoadingKnowledgeBases(true)
@@ -31,28 +34,38 @@ export function Chat() {
       .finally(() => setIsLoadingKnowledgeBases(false))
   }, [])
 
-  async function handleSearch() {
-    if (isSearching || knowledgeBaseId === null || !query.trim()) return
-    if (!Number.isInteger(topK) || topK < 1 || topK > 20) {
-      setSearchError('返回片段数必须在 1 到 20 之间')
+  function handleKnowledgeBaseChange(id: number) {
+    setKnowledgeBaseId(id)
+    setSubmittedQuestion(null)
+    setResponse(null)
+    setQueryError(null)
+  }
+
+  async function handleQuery() {
+    const normalizedQuestion = question.trim()
+    if (isSubmitting || knowledgeBaseId === null || !normalizedQuestion) return
+    if (!Number.isInteger(topK) || topK < 1 || topK > 10) {
+      setQueryError('检索片段数必须在 1 到 10 之间')
       return
     }
 
-    setIsSearching(true)
-    setSearchError(null)
+    setIsSubmitting(true)
+    setQueryError(null)
+    setSubmittedQuestion(normalizedQuestion)
     setResponse(null)
     try {
       setResponse(
-        await semanticSearch({
+        await queryKnowledgeBase({
           knowledge_base_id: knowledgeBaseId,
-          query: query.trim(),
+          question: normalizedQuestion,
           top_k: topK,
         }),
       )
+      setQuestion('')
     } catch (error: unknown) {
-      setSearchError(getApiErrorMessage(error, '语义检索失败，请稍后重试'))
+      setQueryError(getApiErrorMessage(error, '知识库问答失败，请稍后重试'))
     } finally {
-      setIsSearching(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -61,10 +74,13 @@ export function Chat() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl bg-gradient-to-r from-slate-950 to-indigo-950 p-6 text-white shadow-sm sm:p-8">
-        <p className="text-sm font-medium text-indigo-300">阶段 C · 检索调试</p>
-        <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">语义检索</h2>
+        <p className="text-sm font-medium text-indigo-300">阶段 D · RAG 问答</p>
+        <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">知识库问答</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-          当前仅展示向量检索得到的真实文档片段，尚未调用大语言模型，也不会生成 AI 回答。
+          从已索引文档中检索相关内容并生成回答，引用信息来自真实文档片段。
+        </p>
+        <p className="mt-2 text-xs text-slate-400">
+          当前仅支持单轮问答，不保存聊天历史；历史会话将在后续阶段接入。
         </p>
       </section>
 
@@ -77,41 +93,55 @@ export function Chat() {
           <p className="py-8 text-center text-sm text-slate-500">正在加载知识库…</p>
         ) : knowledgeBases.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
-            请先创建知识库、上传并索引文档，再进行语义检索。
+            请先创建知识库、上传并索引文档，再进行知识库问答。
           </p>
         ) : null}
 
         {!knowledgeBaseError && (
-          <SemanticSearchForm
-            knowledgeBases={knowledgeBases}
-            knowledgeBaseId={knowledgeBaseId}
-            query={query}
-            topK={topK}
-            isSearching={isSearching}
-            disabled={isFormDisabled}
-            onKnowledgeBaseChange={setKnowledgeBaseId}
-            onQueryChange={setQuery}
-            onTopKChange={setTopK}
-            onSubmit={() => void handleSearch()}
-          />
+          <div className="space-y-5">
+            <KnowledgeBaseSelector
+              knowledgeBases={knowledgeBases}
+              knowledgeBaseId={knowledgeBaseId}
+              disabled={isFormDisabled || isSubmitting}
+              onChange={handleKnowledgeBaseChange}
+            />
+            <ChatInput
+              question={question}
+              topK={topK}
+              isSubmitting={isSubmitting}
+              disabled={isFormDisabled}
+              onQuestionChange={setQuestion}
+              onTopKChange={setTopK}
+              onSubmit={() => void handleQuery()}
+            />
+          </div>
         )}
 
-        {searchError && (
+        {queryError && (
           <p className="mt-5 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {searchError}
+            {queryError}
           </p>
         )}
       </section>
 
-      {response && (
+      {submittedQuestion && (
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="mb-5">
-            <p className="text-sm font-semibold text-slate-900">语义检索结果</p>
-            <p className="mt-1 text-xs text-slate-400">
-              返回 {response.results.length} 个已索引片段；结果不是 AI 生成的答案
-            </p>
+          <div className="space-y-5">
+            <ChatMessage role="user" content={submittedQuestion} />
+            {isSubmitting ? (
+              <ChatMessage role="assistant" isLoading />
+            ) : response ? (
+              <>
+                <ChatMessage role="assistant" content={response.answer} />
+                <div className="ml-0 space-y-3 sm:ml-12">
+                  <CitationList citations={response.citations} />
+                  <p className="text-xs text-slate-400">
+                    检索到 {response.retrieval_count} 个相关片段 · 模型：{response.model}
+                  </p>
+                </div>
+              </>
+            ) : null}
           </div>
-          <SemanticSearchResults results={response.results} />
         </section>
       )}
     </div>

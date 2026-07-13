@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,6 +33,14 @@ class Settings(BaseSettings):
     chroma_collection_name: str = "document_chunks"
     semantic_search_top_k: int = 4
     knowledge_base_reindex_limit: int = 50
+    chat_api_key: SecretStr | None = None
+    chat_base_url: str | None = "https://api.deepseek.com"
+    chat_model: str = "deepseek-v4-flash"
+    chat_timeout_seconds: float = 60.0
+    chat_max_retries: int = 2
+    rag_temperature: float = 0.2
+    rag_max_tokens: int = 800
+    rag_max_context_chars: int = 12_000
 
     model_config = SettingsConfigDict(
         env_file=".env",

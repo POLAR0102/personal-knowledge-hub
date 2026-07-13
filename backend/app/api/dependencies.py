@@ -10,6 +10,11 @@ from app.ai.embeddings import (
     EmbeddingProvider,
     get_embedding_provider,
 )
+from app.ai.llm import (
+    ChatModelConfigurationError,
+    ChatModelProvider,
+    get_chat_model_provider,
+)
 from app.ai.vector_store import (
     VectorStore,
     VectorStoreConfigurationError,
@@ -40,6 +45,16 @@ def get_vector_store_dependency() -> VectorStore:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Vector store is not available",
+        ) from exc
+
+
+def get_chat_model_provider_dependency() -> ChatModelProvider:
+    try:
+        return get_chat_model_provider()
+    except ChatModelConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chat model service is not configured",
         ) from exc
 
 

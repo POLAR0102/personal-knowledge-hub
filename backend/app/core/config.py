@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     ]
     upload_dir: Path = Path("./uploads")
     max_upload_size_mb: int = 20
+    embedding_provider: str = "openai-compatible"
+    ai_api_key: str | None = None
+    ai_base_url: str | None = None
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimension: int | None = None
+    embedding_batch_size: int = 32
+    embedding_timeout_seconds: float = 30.0
+    embedding_max_retries: int = 2
 
     model_config = SettingsConfigDict(
         env_file=".env",

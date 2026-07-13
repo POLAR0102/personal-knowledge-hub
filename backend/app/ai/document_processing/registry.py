@@ -1,7 +1,11 @@
+from pathlib import Path
+
 from app.ai.document_processing.base import (
     DocumentParser,
     UnsupportedDocumentTypeError,
 )
+from app.ai.document_processing.cleaners import clean_parsed_document
+from app.ai.document_processing.parser_result import ParsedDocument
 from app.ai.document_processing.parsers import (
     DocxParser,
     MarkdownParser,
@@ -25,3 +29,8 @@ def get_parser(file_type: str) -> DocumentParser:
         raise UnsupportedDocumentTypeError(
             f"暂不支持 {normalized_type or '未知'} 格式"
         ) from exc
+
+
+def parse_document(file_path: Path, file_type: str) -> ParsedDocument:
+    parsed_document = get_parser(file_type).parse(file_path)
+    return clean_parsed_document(parsed_document)

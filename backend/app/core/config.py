@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     embedding_batch_size: int = 32
     embedding_timeout_seconds: float = 30.0
     embedding_max_retries: int = 2
+    chroma_persist_dir: Path = Path("./chroma_data")
+    chroma_collection_name: str = "document_chunks"
 
     model_config = SettingsConfigDict(
         env_file=".env",

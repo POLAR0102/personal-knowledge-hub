@@ -151,7 +151,7 @@ export function Dashboard() {
           </p>
         </div>
         <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-          当前阶段：文档管理基础
+          当前阶段：文档解析与切分
         </span>
       </section>
 
@@ -178,7 +178,7 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-semibold text-slate-900">开始使用</p>
               <p className="mt-1 text-sm text-slate-500">
-                知识库和文档上传已开放，解析与问答模块将逐步接入
+                文档上传、解析和文本切分已开放，问答模块将逐步接入
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">

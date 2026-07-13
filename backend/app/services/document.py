@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.models import Document, DocumentStatus, User
 from app.repositories.document import DocumentRepository
+from app.repositories.document_chunk import DocumentChunkRepository
 from app.repositories.knowledge_base import KnowledgeBaseRepository
 
 logger = logging.getLogger(__name__)
@@ -189,7 +190,7 @@ def list_documents(
     page: int,
     page_size: int,
     status: DocumentStatus | None,
-) -> tuple[list[Document], int]:
+) -> tuple[list[tuple[Document, int]], int]:
     owned_knowledge_base_id = _get_owned_knowledge_base_id(
         db,
         owner,
@@ -226,6 +227,18 @@ def get_document(db: Session, owner: User, document_id: int) -> Document:
     if document is None:
         raise DocumentNotFoundError
     return document
+
+
+def count_document_chunks(db: Session, owner: User, document_id: int) -> int:
+    get_document(db, owner, document_id)
+    try:
+        return DocumentChunkRepository(db).count_for_document(
+            document_id=document_id,
+            user_id=owner.id,
+        )
+    except SQLAlchemyError as exc:
+        logger.exception("Database error while counting document chunks")
+        raise DocumentDatabaseError from exc
 
 
 def count_documents(db: Session, owner: User) -> int:

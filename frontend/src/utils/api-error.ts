@@ -32,6 +32,7 @@ export function getApiErrorMessage(
       'File is empty': '不能上传空文件',
       'File is too large': '文件超过上传大小限制',
       'Unsupported file type or MIME type': '文件格式或 MIME 类型不受支持',
+      'Document is already processing': '文档正在处理中，请勿重复提交',
     }
     return messages[detail] ?? detail
   }

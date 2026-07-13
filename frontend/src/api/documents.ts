@@ -2,6 +2,8 @@ import type { AxiosProgressEvent } from 'axios'
 import { apiClient } from './client'
 import type {
   DocumentListResponse,
+  DocumentChunkListResponse,
+  DocumentProcessResult,
   DocumentStats,
   DocumentStatus,
   KnowledgeDocument,
@@ -53,5 +55,23 @@ export async function deleteDocument(id: number): Promise<void> {
 
 export async function getDocumentStats(): Promise<DocumentStats> {
   const response = await apiClient.get<DocumentStats>('/documents/stats')
+  return response.data
+}
+
+export async function processDocument(id: number): Promise<DocumentProcessResult> {
+  const response = await apiClient.post<DocumentProcessResult>(
+    `/documents/${id}/process`,
+  )
+  return response.data
+}
+
+export async function listDocumentChunks(
+  id: number,
+  params: { page?: number; page_size?: number } = {},
+): Promise<DocumentChunkListResponse> {
+  const response = await apiClient.get<DocumentChunkListResponse>(
+    `/documents/${id}/chunks`,
+    { params },
+  )
   return response.data
 }

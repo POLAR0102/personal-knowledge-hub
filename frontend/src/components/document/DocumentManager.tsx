@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   deleteDocument,
   listDocuments,
+  processDocument,
   uploadDocument,
 } from '../../api/documents'
 import type { KnowledgeDocument } from '../../types/document'
 import { getApiErrorMessage } from '../../utils/api-error'
 import { DeleteDocumentDialog } from './DeleteDocumentDialog'
+import { DocumentChunksDialog } from './DocumentChunksDialog'
 import { DocumentList } from './DocumentList'
 import { DocumentUploader } from './DocumentUploader'
 
@@ -28,6 +30,9 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
   const [deletingDocument, setDeletingDocument] = useState<KnowledgeDocument | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [processingDocumentId, setProcessingDocumentId] = useState<number | null>(null)
+  const [processError, setProcessError] = useState<string | null>(null)
+  const [viewingDocument, setViewingDocument] = useState<KnowledgeDocument | null>(null)
 
   const loadItems = useCallback(async () => {
     setIsLoading(true)
@@ -93,6 +98,20 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
     }
   }
 
+  async function handleProcess(document: KnowledgeDocument) {
+    if (processingDocumentId !== null) return
+    setProcessingDocumentId(document.id)
+    setProcessError(null)
+    try {
+      await processDocument(document.id)
+    } catch (error: unknown) {
+      setProcessError(getApiErrorMessage(error, '文档处理失败，请稍后重试'))
+    } finally {
+      await loadItems()
+      setProcessingDocumentId(null)
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
@@ -119,6 +138,11 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
       </div>
 
       <div className="mt-8">
+        {processError && (
+          <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {processError}
+          </p>
+        )}
         {isLoading ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
             正在加载文档…
@@ -143,6 +167,9 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
           <>
             <DocumentList
               items={items}
+              processingDocumentId={processingDocumentId}
+              onProcess={(document) => void handleProcess(document)}
+              onViewChunks={setViewingDocument}
               onDelete={(document) => {
                 setDeleteError(null)
                 setDeletingDocument(document)
@@ -188,6 +215,13 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
             setDeletingDocument(null)
             setDeleteError(null)
           }}
+        />
+      )}
+
+      {viewingDocument && (
+        <DocumentChunksDialog
+          document={viewingDocument}
+          onClose={() => setViewingDocument(null)}
         />
       )}
     </section>

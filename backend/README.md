@@ -64,4 +64,7 @@ alembic upgrade head
 - 单文件最大 20MB
 - 上传后初始状态为 `pending`
 - 文件使用随机名称保存，公开响应不暴露磁盘路径
-- 当前阶段不解析正文，也不执行文本切分、Embedding 或 RAG
+- 用户可手动启动 TXT、Markdown、文本型 PDF 和 DOCX 解析
+- 解析成功后生成带页码、标题和 offset 的文本片段
+- 重复处理会替换旧片段，不会累积重复数据
+- 当前阶段不执行 OCR、Embedding、向量存储或 RAG

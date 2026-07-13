@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Document, DocumentStatus
+from app.db.models import Document, DocumentChunk, DocumentStatus
 
 
 class DocumentRepository:
@@ -44,19 +44,23 @@ class DocumentRepository:
         offset: int,
         limit: int,
         status: DocumentStatus | None,
-    ) -> list[Document]:
-        statement = select(Document).where(
+    ) -> list[tuple[Document, int]]:
+        statement = select(Document, func.count(DocumentChunk.id)).outerjoin(
+            DocumentChunk,
+            DocumentChunk.document_id == Document.id,
+        ).where(
             Document.user_id == user_id,
             Document.knowledge_base_id == knowledge_base_id,
         )
         if status is not None:
             statement = statement.where(Document.status == status)
         statement = (
-            statement.order_by(Document.created_at.desc(), Document.id.desc())
+            statement.group_by(Document.id)
+            .order_by(Document.created_at.desc(), Document.id.desc())
             .offset(offset)
             .limit(limit)
         )
-        return list(self.db.execute(statement).scalars().all())
+        return [(document, count) for document, count in self.db.execute(statement).all()]
 
     def count_owned_in_knowledge_base(
         self,

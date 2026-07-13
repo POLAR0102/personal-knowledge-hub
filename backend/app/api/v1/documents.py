@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.db.models import DocumentStatus, User
 from app.db.session import get_db
-from app.schemas.document import DocumentList, DocumentRead, DocumentStats
+from app.schemas.document import (
+    DocumentList,
+    DocumentProcessResult,
+    DocumentRead,
+    DocumentStats,
+)
+from app.schemas.document_chunk import DocumentChunkList, DocumentChunkRead
 from app.services.document import (
     DocumentDatabaseError,
     DocumentNotFoundError,
@@ -16,11 +22,20 @@ from app.services.document import (
     InvalidFilenameError,
     KnowledgeBaseNotFoundError,
     UnsupportedDocumentTypeError,
+    count_document_chunks,
     count_documents,
     delete_document,
     get_document,
     list_documents,
     upload_document,
+)
+from app.services.document_processing import (
+    DocumentAlreadyProcessingError,
+    DocumentNotFoundError as ProcessingDocumentNotFoundError,
+    DocumentProcessingDatabaseError,
+    DocumentProcessingFailedError,
+    list_document_chunks,
+    process_document,
 )
 
 router = APIRouter(tags=["documents"])
@@ -100,7 +115,12 @@ def list_all(
     except DocumentDatabaseError as exc:
         raise database_error() from exc
     return DocumentList(
-        items=[DocumentRead.model_validate(item) for item in items],
+        items=[
+            DocumentRead.model_validate(document).model_copy(
+                update={"chunk_count": chunk_count}
+            )
+            for document, chunk_count in items
+        ],
         total=total,
         page=page,
         page_size=page_size,
@@ -119,6 +139,64 @@ def stats(
     return DocumentStats(total=total)
 
 
+@router.post(
+    "/documents/{document_id}/process",
+    response_model=DocumentProcessResult,
+)
+def process(
+    document_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> DocumentProcessResult:
+    try:
+        result = process_document(db, current_user, document_id)
+    except ProcessingDocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except DocumentAlreadyProcessingError as exc:
+        raise HTTPException(status_code=409, detail="Document is already processing") from exc
+    except DocumentProcessingFailedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except DocumentProcessingDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentProcessResult(
+        document_id=result.document.id,
+        status=result.document.status,
+        chunk_count=result.chunk_count,
+        updated_at=result.document.updated_at,
+    )
+
+
+@router.get(
+    "/documents/{document_id}/chunks",
+    response_model=DocumentChunkList,
+)
+def list_chunks(
+    document_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> DocumentChunkList:
+    try:
+        items, total = list_document_chunks(
+            db,
+            current_user,
+            document_id,
+            page=page,
+            page_size=page_size,
+        )
+    except ProcessingDocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except DocumentProcessingDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentChunkList(
+        items=[DocumentChunkRead.model_validate(item) for item in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/documents/{document_id}", response_model=DocumentRead)
 def get_one(
     document_id: int,
@@ -127,11 +205,14 @@ def get_one(
 ) -> DocumentRead:
     try:
         document = get_document(db, current_user, document_id)
+        chunk_count = count_document_chunks(db, current_user, document.id)
     except DocumentNotFoundError as exc:
         raise document_not_found_error() from exc
     except DocumentDatabaseError as exc:
         raise database_error() from exc
-    return DocumentRead.model_validate(document)
+    return DocumentRead.model_validate(document).model_copy(
+        update={"chunk_count": chunk_count}
+    )
 
 
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

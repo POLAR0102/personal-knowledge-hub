@@ -17,6 +17,7 @@ class DocumentRead(BaseModel):
     error_message: str | None
     created_at: datetime
     updated_at: datetime
+    chunk_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -30,3 +31,10 @@ class DocumentList(BaseModel):
 
 class DocumentStats(BaseModel):
     total: int
+
+
+class DocumentProcessResult(BaseModel):
+    document_id: int
+    status: DocumentStatus
+    chunk_count: int
+    updated_at: datetime

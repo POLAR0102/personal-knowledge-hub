@@ -8,7 +8,7 @@ export function Documents() {
       </div>
       <h2 className="mt-4 text-xl font-semibold text-slate-900">文档管理</h2>
       <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
-        文档归属于具体知识库。请先选择一个知识库，再上传和管理 TXT、Markdown、PDF 或 DOCX 文件。
+        文档归属于具体知识库。请选择知识库上传 TXT、Markdown、PDF 或 DOCX，并在列表中启动解析和查看文本片段。
       </p>
       <Link
         to="/knowledge-bases"

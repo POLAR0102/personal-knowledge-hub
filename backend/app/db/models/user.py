@@ -7,10 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.db.models.agent_task import AgentTask
     from app.db.models.conversation import Conversation
     from app.db.models.document import Document
     from app.db.models.document_chunk import DocumentChunk
     from app.db.models.knowledge_base import KnowledgeBase
+    from app.db.models.note import Note
 
 
 class User(Base):
@@ -64,6 +66,16 @@ class User(Base):
         passive_deletes=True,
     )
     conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    agent_tasks: Mapped[list["AgentTask"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    notes: Mapped[list["Note"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
         passive_deletes=True,

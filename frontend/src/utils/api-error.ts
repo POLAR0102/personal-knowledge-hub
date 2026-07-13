@@ -58,6 +58,13 @@ export function getApiErrorMessage(
       'client_request_id was already used for different content': '请求标识已被其他问题使用，请重新发送',
       'Previous message must be retried before sending a new question': '请先重试上一条失败的问题',
       'Duplicate message request': '重复的消息请求已被拦截，请稍后重试',
+      'Agent task not found': 'Agent 任务不存在或无权访问',
+      'Agent task operation failed': 'Agent 任务操作失败，请稍后重试',
+      'Agent task is already running': 'Agent 任务正在执行，请勿重复提交',
+      'Only failed Agent tasks can be retried': '只有失败的 Agent 任务可以重试',
+      'Only completed Agent tasks can be saved as a note': '只有已完成的 Agent 任务可以保存为笔记',
+      'Note not found': '笔记不存在或无权访问',
+      'Note operation failed': '笔记操作失败，请稍后重试',
     }
     return messages[detail] ?? detail
   }

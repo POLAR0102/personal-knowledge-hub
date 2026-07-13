@@ -1,16 +1,28 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
-import { Agent } from '../pages/Agent'
 import { Chat } from '../pages/Chat'
 import { Dashboard } from '../pages/Dashboard'
 import { Documents } from '../pages/Documents'
 import { KnowledgeBaseDetail } from '../pages/KnowledgeBaseDetail'
 import { KnowledgeBases } from '../pages/KnowledgeBases'
 import { Login } from '../pages/Login'
-import { Notes } from '../pages/Notes'
 import { Register } from '../pages/Register'
+
+const Agent = lazy(() =>
+  import('../pages/Agent').then((module) => ({ default: module.Agent })),
+)
+const Notes = lazy(() =>
+  import('../pages/Notes').then((module) => ({ default: module.Notes })),
+)
+
+const pageFallback = (
+  <div className="rounded-2xl border border-slate-200 bg-white px-6 py-20 text-center text-sm text-slate-400 shadow-sm">
+    正在加载页面…
+  </div>
+)
 
 export function AppRoutes() {
   return (
@@ -30,8 +42,14 @@ export function AppRoutes() {
           />
           <Route path="documents" element={<Documents />} />
           <Route path="chat" element={<Chat />} />
-          <Route path="agent" element={<Agent />} />
-          <Route path="notes" element={<Notes />} />
+          <Route
+            path="agent"
+            element={<Suspense fallback={pageFallback}><Agent /></Suspense>}
+          />
+          <Route
+            path="notes"
+            element={<Suspense fallback={pageFallback}><Notes /></Suspense>}
+          />
         </Route>
       </Route>
 

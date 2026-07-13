@@ -4,6 +4,7 @@ import { listConversations } from '../api/conversations'
 import { getDocumentStats } from '../api/documents'
 import { getHealth } from '../api/health'
 import { listKnowledgeBases } from '../api/knowledge-bases'
+import { listNotes } from '../api/notes'
 import type { ApiConnectionStatus } from '../types/health'
 
 interface SummaryCardProps {
@@ -74,6 +75,8 @@ export function Dashboard() {
   const [documentError, setDocumentError] = useState(false)
   const [conversationTotal, setConversationTotal] = useState<number | null>(null)
   const [conversationError, setConversationError] = useState(false)
+  const [noteTotal, setNoteTotal] = useState<number | null>(null)
+  const [noteError, setNoteError] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -108,6 +111,12 @@ export function Dashboard() {
     listConversations({ page: 1, page_size: 1 })
       .then((data) => setConversationTotal(data.total))
       .catch(() => setConversationError(true))
+  }, [])
+
+  useEffect(() => {
+    listNotes({ page: 1, page_size: 1 })
+      .then((data) => setNoteTotal(data.total))
+      .catch(() => setNoteError(true))
   }, [])
 
   const statusView = {
@@ -155,6 +164,14 @@ export function Dashboard() {
         ? '尚未创建问答会话'
         : '查看和继续历史问答'
 
+  const noteCaption = noteError
+    ? '暂时无法获取数量'
+    : noteTotal === null
+      ? '正在获取真实数据…'
+      : noteTotal === 0
+        ? '尚未创建笔记'
+        : '查看手动与 Agent 笔记'
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col justify-between gap-5 rounded-2xl bg-gradient-to-r from-slate-950 to-slate-800 p-6 text-white shadow-sm sm:p-8 lg:flex-row lg:items-end">
@@ -168,7 +185,7 @@ export function Dashboard() {
           </p>
         </div>
         <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-          当前阶段：问答会话与历史记录
+          当前阶段：轻量 Agent 与笔记
         </span>
       </section>
 
@@ -185,7 +202,12 @@ export function Dashboard() {
           caption={documentCaption}
           to="/knowledge-bases"
         />
-        <SummaryCard label="笔记" value="—" caption="笔记模块尚未接入" />
+        <SummaryCard
+          label="笔记"
+          value={noteTotal ?? '—'}
+          caption={noteCaption}
+          to="/notes"
+        />
         <SummaryCard
           label="问答会话"
           value={conversationTotal ?? '—'}
@@ -200,7 +222,7 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-semibold text-slate-900">开始使用</p>
               <p className="mt-1 text-sm text-slate-500">
-                文档处理、向量索引和可恢复历史记录的 RAG 问答已开放
+                RAG 问答、轻量 Agent 和 Markdown 笔记均已开放
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">

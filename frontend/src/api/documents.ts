@@ -3,6 +3,8 @@ import { apiClient } from './client'
 import type {
   DocumentListResponse,
   DocumentChunkListResponse,
+  DocumentIndexResult,
+  DocumentIndexStatusResponse,
   DocumentProcessResult,
   DocumentStats,
   DocumentStatus,
@@ -61,6 +63,25 @@ export async function getDocumentStats(): Promise<DocumentStats> {
 export async function processDocument(id: number): Promise<DocumentProcessResult> {
   const response = await apiClient.post<DocumentProcessResult>(
     `/documents/${id}/process`,
+  )
+  return response.data
+}
+
+export async function indexDocument(id: number): Promise<DocumentIndexResult> {
+  const response = await apiClient.post<DocumentIndexResult>(
+    `/documents/${id}/index`,
+    undefined,
+    { timeout: 60_000 },
+  )
+  return response.data
+}
+
+export async function getDocumentIndexStatus(
+  id: number,
+): Promise<DocumentIndexStatusResponse> {
+  const response = await apiClient.get<DocumentIndexStatusResponse>(
+    `/documents/${id}/index-status`,
+    { timeout: 30_000 },
   )
   return response.data
 }

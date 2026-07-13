@@ -3,11 +3,19 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.ai.embeddings import EmbeddingProvider
+from app.ai.vector_store import VectorStore
+from app.api.dependencies import (
+    get_current_user,
+    get_embedding_provider_dependency,
+    get_vector_store_dependency,
+)
 from app.db.models import DocumentStatus, User
 from app.db.session import get_db
 from app.schemas.document import (
     DocumentList,
+    DocumentIndexResult,
+    DocumentIndexStatusRead,
     DocumentProcessResult,
     DocumentRead,
     DocumentStats,
@@ -15,6 +23,7 @@ from app.schemas.document import (
 from app.schemas.document_chunk import DocumentChunkList, DocumentChunkRead
 from app.services.document import (
     DocumentDatabaseError,
+    DocumentIndexingInProgressError,
     DocumentNotFoundError,
     DocumentStorageError,
     DocumentTooLargeError,
@@ -22,6 +31,7 @@ from app.services.document import (
     InvalidFilenameError,
     KnowledgeBaseNotFoundError,
     UnsupportedDocumentTypeError,
+    DocumentVectorStoreError,
     count_document_chunks,
     count_documents,
     delete_document,
@@ -30,12 +40,23 @@ from app.services.document import (
     upload_document,
 )
 from app.services.document_processing import (
+    DocumentAlreadyIndexingError as ProcessingDocumentAlreadyIndexingError,
     DocumentAlreadyProcessingError,
     DocumentNotFoundError as ProcessingDocumentNotFoundError,
     DocumentProcessingDatabaseError,
     DocumentProcessingFailedError,
     list_document_chunks,
     process_document,
+)
+from app.services.document_indexing import (
+    DocumentAlreadyIndexingError,
+    DocumentIndexingDatabaseError,
+    DocumentIndexingDependencyError,
+    DocumentIndexingFailedError,
+    DocumentNotFoundError as IndexingDocumentNotFoundError,
+    DocumentNotReadyForIndexError,
+    get_document_index_status,
+    index_document,
 )
 
 router = APIRouter(tags=["documents"])
@@ -154,6 +175,8 @@ def process(
         raise document_not_found_error() from exc
     except DocumentAlreadyProcessingError as exc:
         raise HTTPException(status_code=409, detail="Document is already processing") from exc
+    except ProcessingDocumentAlreadyIndexingError as exc:
+        raise HTTPException(status_code=409, detail="Document is currently indexing") from exc
     except DocumentProcessingFailedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except DocumentProcessingDatabaseError as exc:
@@ -163,6 +186,86 @@ def process(
         status=result.document.status,
         chunk_count=result.chunk_count,
         updated_at=result.document.updated_at,
+    )
+
+
+@router.post(
+    "/documents/{document_id}/index",
+    response_model=DocumentIndexResult,
+)
+def index(
+    document_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    embedding_provider: Annotated[
+        EmbeddingProvider,
+        Depends(get_embedding_provider_dependency),
+    ],
+    vector_store: Annotated[VectorStore, Depends(get_vector_store_dependency)],
+) -> DocumentIndexResult:
+    try:
+        result = index_document(
+            db,
+            current_user,
+            document_id,
+            embedding_provider,
+            vector_store,
+        )
+    except IndexingDocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except DocumentAlreadyIndexingError as exc:
+        raise HTTPException(status_code=409, detail="Document is already indexing") from exc
+    except DocumentNotReadyForIndexError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except DocumentIndexingFailedError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except DocumentIndexingDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentIndexResult(
+        document_id=result.document.id,
+        index_status=result.document.index_status,
+        chunk_count=result.chunk_count,
+        vector_count=result.vector_count,
+        embedding_model=result.document.embedding_model or "",
+        indexed_at=result.document.indexed_at,
+    )
+
+
+@router.get(
+    "/documents/{document_id}/index-status",
+    response_model=DocumentIndexStatusRead,
+)
+def index_status(
+    document_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    vector_store: Annotated[VectorStore, Depends(get_vector_store_dependency)],
+) -> DocumentIndexStatusRead:
+    try:
+        result = get_document_index_status(
+            db,
+            current_user,
+            document_id,
+            vector_store,
+        )
+    except IndexingDocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except DocumentIndexingDependencyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Vector store is not available",
+        ) from exc
+    except DocumentIndexingDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentIndexStatusRead(
+        document_id=result.document.id,
+        processing_status=result.document.status,
+        index_status=result.document.index_status,
+        chunk_count=result.chunk_count,
+        vector_count=result.vector_count,
+        embedding_model=result.document.embedding_model,
+        indexed_at=result.document.indexed_at,
+        index_error_message=result.document.index_error_message,
     )
 
 
@@ -227,6 +330,13 @@ def delete(
         raise document_not_found_error() from exc
     except DocumentStorageError as exc:
         raise HTTPException(status_code=500, detail="Document storage operation failed") from exc
+    except DocumentIndexingInProgressError as exc:
+        raise HTTPException(status_code=409, detail="Document is currently indexing") from exc
+    except DocumentVectorStoreError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to delete document vectors",
+        ) from exc
     except DocumentDatabaseError as exc:
         raise database_error() from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

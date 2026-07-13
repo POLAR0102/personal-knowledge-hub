@@ -1,7 +1,12 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app.db.models import Document, DocumentChunk, DocumentStatus
+from app.db.models import (
+    Document,
+    DocumentChunk,
+    DocumentIndexStatus,
+    DocumentStatus,
+)
 
 
 class DocumentRepository:
@@ -81,12 +86,42 @@ class DocumentRepository:
         statement = select(func.count(Document.id)).where(Document.user_id == user_id)
         return self.db.execute(statement).scalar_one()
 
+    def list_owned_by_knowledge_base(
+        self,
+        *,
+        user_id: int,
+        knowledge_base_id: int,
+    ) -> list[Document]:
+        statement = select(Document).where(
+            Document.user_id == user_id,
+            Document.knowledge_base_id == knowledge_base_id,
+        )
+        return list(self.db.execute(statement).scalars().all())
+
     def get_owned(self, *, document_id: int, user_id: int) -> Document | None:
         statement = select(Document).where(
             Document.id == document_id,
             Document.user_id == user_id,
         )
         return self.db.execute(statement).scalar_one_or_none()
+
+    def try_start_indexing(self, *, document_id: int, user_id: int) -> bool:
+        result = self.db.execute(
+            update(Document)
+            .where(
+                Document.id == document_id,
+                Document.user_id == user_id,
+                Document.status == DocumentStatus.COMPLETED,
+                Document.index_status != DocumentIndexStatus.INDEXING,
+            )
+            .values(
+                index_status=DocumentIndexStatus.INDEXING,
+                index_error_message=None,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        self.db.commit()
+        return result.rowcount == 1
 
     def delete(self, document: Document) -> None:
         self.db.delete(document)

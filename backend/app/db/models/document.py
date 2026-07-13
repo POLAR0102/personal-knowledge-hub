@@ -20,6 +20,13 @@ class DocumentStatus(str, Enum):
     FAILED = "failed"
 
 
+class DocumentIndexStatus(str, Enum):
+    NOT_INDEXED = "not_indexed"
+    INDEXING = "indexing"
+    INDEXED = "indexed"
+    FAILED = "failed"
+
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -53,6 +60,27 @@ class Document(Base):
         server_default=DocumentStatus.PENDING.value,
     )
     error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    index_status: Mapped[DocumentIndexStatus] = mapped_column(
+        SqlEnum(
+            DocumentIndexStatus,
+            name="document_index_status",
+            native_enum=False,
+            create_constraint=True,
+            values_callable=lambda enum_class: [item.value for item in enum_class],
+        ),
+        nullable=False,
+        default=DocumentIndexStatus.NOT_INDEXED,
+        server_default=DocumentIndexStatus.NOT_INDEXED.value,
+    )
+    index_error_message: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+    indexed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    embedding_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

@@ -1,4 +1,5 @@
 export type DocumentStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type DocumentIndexStatus = 'not_indexed' | 'indexing' | 'indexed' | 'failed'
 
 export interface KnowledgeDocument {
   id: number
@@ -10,6 +11,10 @@ export interface KnowledgeDocument {
   file_size: number
   status: DocumentStatus
   error_message: string | null
+  index_status: DocumentIndexStatus
+  index_error_message: string | null
+  indexed_at: string | null
+  embedding_model: string | null
   created_at: string
   updated_at: string
   chunk_count: number
@@ -31,6 +36,26 @@ export interface DocumentProcessResult {
   status: DocumentStatus
   chunk_count: number
   updated_at: string
+}
+
+export interface DocumentIndexResult {
+  document_id: number
+  index_status: DocumentIndexStatus
+  chunk_count: number
+  vector_count: number
+  embedding_model: string
+  indexed_at: string
+}
+
+export interface DocumentIndexStatusResponse {
+  document_id: number
+  processing_status: DocumentStatus
+  index_status: DocumentIndexStatus
+  chunk_count: number
+  vector_count: number
+  embedding_model: string | null
+  indexed_at: string | null
+  index_error_message: string | null
 }
 
 export interface DocumentChunk {

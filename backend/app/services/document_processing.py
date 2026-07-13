@@ -5,11 +5,18 @@ from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.ai.vector_store import VectorStore, VectorStoreError, get_vector_store
 from app.ai.document_processing.base import DocumentProcessingError
 from app.ai.document_processing.chunker import Chunker
 from app.ai.document_processing.registry import parse_document
 from app.core.config import get_settings
-from app.db.models import Document, DocumentChunk, DocumentStatus, User
+from app.db.models import (
+    Document,
+    DocumentChunk,
+    DocumentIndexStatus,
+    DocumentStatus,
+    User,
+)
 from app.repositories.document import DocumentRepository
 from app.repositories.document_chunk import DocumentChunkRepository
 
@@ -21,6 +28,10 @@ class DocumentNotFoundError(Exception):
 
 
 class DocumentAlreadyProcessingError(Exception):
+    pass
+
+
+class DocumentAlreadyIndexingError(Exception):
     pass
 
 
@@ -80,10 +91,17 @@ def _validated_file_path(document: Document) -> Path:
     return file_path
 
 
-def process_document(db: Session, owner: User, document_id: int) -> ProcessingResult:
+def process_document(
+    db: Session,
+    owner: User,
+    document_id: int,
+    vector_store: VectorStore | None = None,
+) -> ProcessingResult:
     document = _get_owned_document(db, owner.id, document_id)
     if document.status == DocumentStatus.PROCESSING:
         raise DocumentAlreadyProcessingError
+    if document.index_status == DocumentIndexStatus.INDEXING:
+        raise DocumentAlreadyIndexingError
 
     try:
         file_path = _validated_file_path(document)
@@ -91,11 +109,30 @@ def process_document(db: Session, owner: User, document_id: int) -> ProcessingRe
         _mark_failed(db, owner.id, document_id, str(exc))
         raise
 
+    if document.index_status != DocumentIndexStatus.NOT_INDEXED:
+        try:
+            (vector_store or get_vector_store()).delete_by_document(
+                document.id,
+                owner.id,
+            )
+        except VectorStoreError as exc:
+            logger.warning(
+                "Unable to invalidate vector index before processing document %s",
+                document_id,
+            )
+            raise DocumentProcessingFailedError(
+                "清理旧向量索引失败，请稍后重试"
+            ) from exc
+
     chunk_repository = DocumentChunkRepository(db)
     try:
         chunk_repository.delete_for_document(document_id=document.id)
         document.status = DocumentStatus.PROCESSING
         document.error_message = None
+        document.index_status = DocumentIndexStatus.NOT_INDEXED
+        document.index_error_message = None
+        document.indexed_at = None
+        document.embedding_model = None
         db.commit()
     except SQLAlchemyError as exc:
         db.rollback()

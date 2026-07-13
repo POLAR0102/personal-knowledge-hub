@@ -5,12 +5,42 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.ai.embeddings import (
+    EmbeddingConfigurationError,
+    EmbeddingProvider,
+    get_embedding_provider,
+)
+from app.ai.vector_store import (
+    VectorStore,
+    VectorStoreConfigurationError,
+    get_vector_store,
+)
 from app.core.security import InvalidTokenError, decode_access_token
 from app.db.models import User
 from app.db.session import get_db
 from app.repositories.user import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+def get_embedding_provider_dependency() -> EmbeddingProvider:
+    try:
+        return get_embedding_provider()
+    except EmbeddingConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Embedding service is not configured",
+        ) from exc
+
+
+def get_vector_store_dependency() -> VectorStore:
+    try:
+        return get_vector_store()
+    except VectorStoreConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Vector store is not available",
+        ) from exc
 
 
 def get_current_user(

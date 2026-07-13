@@ -6,7 +6,7 @@ from app.ai.embeddings.base import (
     EmbeddingRequestError,
     EmbeddingResponseError,
 )
-from app.ai.embeddings.factory import create_embedding_provider
+from app.ai.embeddings.factory import create_embedding_provider, get_embedding_provider
 
 __all__ = [
     "EmbeddingConfigurationError",
@@ -16,4 +16,5 @@ __all__ = [
     "EmbeddingRequestError",
     "EmbeddingResponseError",
     "create_embedding_provider",
+    "get_embedding_provider",
 ]

@@ -14,7 +14,9 @@ from app.schemas.knowledge_base import (
 )
 from app.services.knowledge_base import (
     KnowledgeBaseDatabaseError,
+    KnowledgeBaseIndexingInProgressError,
     KnowledgeBaseNotFoundError,
+    KnowledgeBaseVectorStoreError,
     create_knowledge_base,
     delete_knowledge_base,
     get_knowledge_base,
@@ -122,6 +124,16 @@ def delete(
         delete_knowledge_base(db, current_user, knowledge_base_id)
     except KnowledgeBaseNotFoundError as exc:
         raise not_found_error() from exc
+    except KnowledgeBaseIndexingInProgressError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Knowledge base contains a document that is currently indexing",
+        ) from exc
+    except KnowledgeBaseVectorStoreError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to delete knowledge base vectors",
+        ) from exc
     except KnowledgeBaseDatabaseError as exc:
         raise database_error() from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

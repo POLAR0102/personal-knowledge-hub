@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from app.ai.embeddings.base import (
     EmbeddingConfigurationError,
     EmbeddingProvider,
@@ -23,3 +25,8 @@ def create_embedding_provider(settings: Settings | None = None) -> EmbeddingProv
         max_retries=current_settings.embedding_max_retries,
         dimension=current_settings.embedding_dimension,
     )
+
+
+@lru_cache
+def get_embedding_provider() -> EmbeddingProvider:
+    return create_embedding_provider()

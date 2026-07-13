@@ -33,6 +33,14 @@ export function getApiErrorMessage(
       'File is too large': '文件超过上传大小限制',
       'Unsupported file type or MIME type': '文件格式或 MIME 类型不受支持',
       'Document is already processing': '文档正在处理中，请勿重复提交',
+      'Document is currently indexing': '文档正在建立索引，请勿重复操作',
+      'Document is already indexing': '文档正在建立索引，请勿重复提交',
+      'Document must be processed before indexing': '请先完成文档解析，再建立索引',
+      'Document has no chunks to index': '文档没有可建立索引的文本片段',
+      'Embedding service is not configured': 'Embedding 服务尚未配置',
+      'Vector store is not available': '向量数据库暂时不可用',
+      'Unable to delete document vectors': '文档向量清理失败，已取消删除',
+      'Unable to delete knowledge base vectors': '知识库向量清理失败，已取消删除',
     }
     return messages[detail] ?? detail
   }

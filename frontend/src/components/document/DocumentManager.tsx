@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   deleteDocument,
+  indexDocument,
   listDocuments,
   processDocument,
   uploadDocument,
@@ -10,6 +11,7 @@ import { getApiErrorMessage } from '../../utils/api-error'
 import { DeleteDocumentDialog } from './DeleteDocumentDialog'
 import { DocumentChunksDialog } from './DocumentChunksDialog'
 import { DocumentList } from './DocumentList'
+import { DocumentIndexStatusDialog } from './DocumentIndexStatusDialog'
 import { DocumentUploader } from './DocumentUploader'
 
 const PAGE_SIZE = 10
@@ -32,7 +34,10 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [processingDocumentId, setProcessingDocumentId] = useState<number | null>(null)
   const [processError, setProcessError] = useState<string | null>(null)
+  const [indexingDocumentId, setIndexingDocumentId] = useState<number | null>(null)
+  const [indexError, setIndexError] = useState<string | null>(null)
   const [viewingDocument, setViewingDocument] = useState<KnowledgeDocument | null>(null)
+  const [viewingIndexDocument, setViewingIndexDocument] = useState<KnowledgeDocument | null>(null)
 
   const loadItems = useCallback(async () => {
     setIsLoading(true)
@@ -112,6 +117,20 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
     }
   }
 
+  async function handleIndex(document: KnowledgeDocument) {
+    if (indexingDocumentId !== null) return
+    setIndexingDocumentId(document.id)
+    setIndexError(null)
+    try {
+      await indexDocument(document.id)
+    } catch (error: unknown) {
+      setIndexError(getApiErrorMessage(error, '文档索引失败，请稍后重试'))
+    } finally {
+      await loadItems()
+      setIndexingDocumentId(null)
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
@@ -143,6 +162,11 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
             {processError}
           </p>
         )}
+        {indexError && (
+          <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {indexError}
+          </p>
+        )}
         {isLoading ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
             正在加载文档…
@@ -168,7 +192,10 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
             <DocumentList
               items={items}
               processingDocumentId={processingDocumentId}
+              indexingDocumentId={indexingDocumentId}
               onProcess={(document) => void handleProcess(document)}
+              onIndex={(document) => void handleIndex(document)}
+              onViewIndexStatus={setViewingIndexDocument}
               onViewChunks={setViewingDocument}
               onDelete={(document) => {
                 setDeleteError(null)
@@ -222,6 +249,13 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
         <DocumentChunksDialog
           document={viewingDocument}
           onClose={() => setViewingDocument(null)}
+        />
+      )}
+
+      {viewingIndexDocument && (
+        <DocumentIndexStatusDialog
+          document={viewingIndexDocument}
+          onClose={() => setViewingIndexDocument(null)}
         />
       )}
     </section>

@@ -64,6 +64,22 @@ class DocumentChunkRepository:
         )
         return list(self.db.execute(statement).scalars().all())
 
+    def list_all_for_document(
+        self,
+        *,
+        document_id: int,
+        user_id: int,
+    ) -> list[DocumentChunk]:
+        statement = (
+            select(DocumentChunk)
+            .where(
+                DocumentChunk.document_id == document_id,
+                DocumentChunk.user_id == user_id,
+            )
+            .order_by(DocumentChunk.chunk_index)
+        )
+        return list(self.db.execute(statement).scalars().all())
+
     def count_for_document(self, *, document_id: int, user_id: int) -> int:
         statement = select(func.count(DocumentChunk.id)).where(
             DocumentChunk.document_id == document_id,

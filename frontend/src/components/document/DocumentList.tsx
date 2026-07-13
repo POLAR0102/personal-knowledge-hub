@@ -1,6 +1,7 @@
 import type { KnowledgeDocument } from '../../types/document'
 import { formatDateTime } from '../../utils/date'
 import { formatFileSize } from '../../utils/file'
+import { DocumentIndexActions } from './DocumentIndexActions'
 
 const statusView = {
   pending: { label: '等待处理', className: 'bg-amber-50 text-amber-700' },
@@ -14,7 +15,10 @@ interface DocumentListProps {
   onDelete: (document: KnowledgeDocument) => void
   onProcess: (document: KnowledgeDocument) => void
   onViewChunks: (document: KnowledgeDocument) => void
+  onIndex: (document: KnowledgeDocument) => void
+  onViewIndexStatus: (document: KnowledgeDocument) => void
   processingDocumentId: number | null
+  indexingDocumentId: number | null
 }
 
 export function DocumentList({
@@ -22,7 +26,10 @@ export function DocumentList({
   onDelete,
   onProcess,
   onViewChunks,
+  onIndex,
+  onViewIndexStatus,
   processingDocumentId,
+  indexingDocumentId,
 }: DocumentListProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200">
@@ -55,8 +62,17 @@ export function DocumentList({
                     已生成 {document.chunk_count} 个文本片段
                   </p>
                 )}
+                {document.index_error_message && (
+                  <p className="mt-2 text-xs text-rose-600">{document.index_error_message}</p>
+                )}
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
+                <DocumentIndexActions
+                  document={document}
+                  indexingDocumentId={indexingDocumentId}
+                  onIndex={onIndex}
+                  onViewStatus={onViewIndexStatus}
+                />
                 {(document.status === 'pending' || document.status === 'failed') && (
                   <button
                     type="button"
@@ -91,7 +107,12 @@ export function DocumentList({
                 )}
                 <button
                   type="button"
-                  disabled={processingDocumentId === document.id || document.status === 'processing'}
+                  disabled={
+                    processingDocumentId === document.id ||
+                    indexingDocumentId === document.id ||
+                    document.status === 'processing' ||
+                    document.index_status === 'indexing'
+                  }
                   onClick={() => onDelete(document)}
                   className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >

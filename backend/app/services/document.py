@@ -6,8 +6,9 @@ from fastapi import UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.ai.vector_store import VectorStore, VectorStoreError, get_vector_store
 from app.core.config import get_settings
-from app.db.models import Document, DocumentStatus, User
+from app.db.models import Document, DocumentIndexStatus, DocumentStatus, User
 from app.repositories.document import DocumentRepository
 from app.repositories.document_chunk import DocumentChunkRepository
 from app.repositories.knowledge_base import KnowledgeBaseRepository
@@ -54,6 +55,14 @@ class DocumentStorageError(Exception):
 
 
 class DocumentDatabaseError(Exception):
+    pass
+
+
+class DocumentIndexingInProgressError(Exception):
+    pass
+
+
+class DocumentVectorStoreError(Exception):
     pass
 
 
@@ -249,9 +258,29 @@ def count_documents(db: Session, owner: User) -> int:
         raise DocumentDatabaseError from exc
 
 
-def delete_document(db: Session, owner: User, document_id: int) -> None:
+def delete_document(
+    db: Session,
+    owner: User,
+    document_id: int,
+    vector_store: VectorStore | None = None,
+) -> None:
     repository = DocumentRepository(db)
     document = get_document(db, owner, document_id)
+    if document.index_status == DocumentIndexStatus.INDEXING:
+        raise DocumentIndexingInProgressError
+    if document.index_status != DocumentIndexStatus.NOT_INDEXED:
+        try:
+            (vector_store or get_vector_store()).delete_by_document(
+                document.id,
+                owner.id,
+            )
+        except VectorStoreError as exc:
+            logger.warning(
+                "Unable to delete vectors before deleting document %s",
+                document_id,
+            )
+            raise DocumentVectorStoreError from exc
+
     upload_root = get_settings().upload_dir.expanduser().resolve()
     file_path = Path(document.file_path).resolve()
     if not file_path.is_relative_to(upload_root):

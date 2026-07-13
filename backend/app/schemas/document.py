@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.db.models.document import DocumentStatus
+from app.db.models.document import DocumentIndexStatus, DocumentStatus
 
 
 class DocumentRead(BaseModel):
@@ -15,6 +15,10 @@ class DocumentRead(BaseModel):
     file_size: int
     status: DocumentStatus
     error_message: str | None
+    index_status: DocumentIndexStatus
+    index_error_message: str | None
+    indexed_at: datetime | None
+    embedding_model: str | None
     created_at: datetime
     updated_at: datetime
     chunk_count: int = 0
@@ -38,3 +42,23 @@ class DocumentProcessResult(BaseModel):
     status: DocumentStatus
     chunk_count: int
     updated_at: datetime
+
+
+class DocumentIndexResult(BaseModel):
+    document_id: int
+    index_status: DocumentIndexStatus
+    chunk_count: int
+    vector_count: int
+    embedding_model: str
+    indexed_at: datetime
+
+
+class DocumentIndexStatusRead(BaseModel):
+    document_id: int
+    processing_status: DocumentStatus
+    index_status: DocumentIndexStatus
+    chunk_count: int
+    vector_count: int
+    embedding_model: str | None
+    indexed_at: datetime | None
+    index_error_message: str | None

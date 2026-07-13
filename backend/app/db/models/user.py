@@ -8,6 +8,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.document import Document
+    from app.db.models.document_chunk import DocumentChunk
     from app.db.models.knowledge_base import KnowledgeBase
 
 
@@ -52,6 +53,11 @@ class User(Base):
         passive_deletes=True,
     )
     documents: Mapped[list["Document"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    document_chunks: Mapped[list["DocumentChunk"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
         passive_deletes=True,

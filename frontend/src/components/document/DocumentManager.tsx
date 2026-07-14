@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  addDocumentTag,
   deleteDocument,
   indexDocument,
   listDocuments,
   processDocument,
+  removeDocumentTag,
+  setDocumentFavorite,
   uploadDocument,
 } from '../../api/documents'
+import { listTags } from '../../api/tags'
 import type { KnowledgeDocument } from '../../types/document'
+import type { Tag } from '../../types/tag'
 import { getApiErrorMessage } from '../../utils/api-error'
 import { DeleteDocumentDialog } from './DeleteDocumentDialog'
 import { DocumentChunksDialog } from './DocumentChunksDialog'
 import { DocumentList } from './DocumentList'
 import { DocumentIndexStatusDialog } from './DocumentIndexStatusDialog'
 import { DocumentUploader } from './DocumentUploader'
+import { DocumentTagsDialog } from './DocumentTagsDialog'
 import { KnowledgeBaseReindexDialog } from './KnowledgeBaseReindexDialog'
 
 const PAGE_SIZE = 10
@@ -40,6 +46,23 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
   const [viewingDocument, setViewingDocument] = useState<KnowledgeDocument | null>(null)
   const [viewingIndexDocument, setViewingIndexDocument] = useState<KnowledgeDocument | null>(null)
   const [isReindexDialogOpen, setIsReindexDialogOpen] = useState(false)
+  const [tags, setTags] = useState<Tag[]>([])
+  const [taggedDocument, setTaggedDocument] = useState<KnowledgeDocument | null>(null)
+  const [updatingTagId, setUpdatingTagId] = useState<number | null>(null)
+  const [updatingFavoriteDocumentId, setUpdatingFavoriteDocumentId] = useState<number | null>(null)
+  const [organizeError, setOrganizeError] = useState<string | null>(null)
+  const [tagLoadError, setTagLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    listTags({ page: 1, page_size: 100 })
+      .then((data) => {
+        setTags(data.items)
+        setTagLoadError(null)
+      })
+      .catch((error: unknown) => {
+        setTagLoadError(getApiErrorMessage(error, '标签加载失败，请稍后重试'))
+      })
+  }, [])
 
   const loadItems = useCallback(async () => {
     setIsLoading(true)
@@ -133,6 +156,62 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
     }
   }
 
+  function replaceDocument(updated: KnowledgeDocument) {
+    setItems((current) =>
+      current.map((document) =>
+        document.id === updated.id ? updated : document,
+      ),
+    )
+    setTaggedDocument((current) =>
+      current?.id === updated.id ? updated : current,
+    )
+  }
+
+  async function handleToggleFavorite(document: KnowledgeDocument) {
+    if (updatingFavoriteDocumentId !== null) return
+    setUpdatingFavoriteDocumentId(document.id)
+    setOrganizeError(null)
+    try {
+      replaceDocument(
+        await setDocumentFavorite(document.id, !document.is_favorite),
+      )
+    } catch (error: unknown) {
+      setOrganizeError(getApiErrorMessage(error, '文档收藏状态修改失败'))
+    } finally {
+      setUpdatingFavoriteDocumentId(null)
+    }
+  }
+
+  async function handleAddTag(tag: Tag) {
+    if (!taggedDocument || updatingTagId !== null) return
+    setUpdatingTagId(tag.id)
+    setOrganizeError(null)
+    try {
+      replaceDocument(await addDocumentTag(taggedDocument.id, tag.id))
+    } catch (error: unknown) {
+      setOrganizeError(getApiErrorMessage(error, '文档标签添加失败'))
+    } finally {
+      setUpdatingTagId(null)
+    }
+  }
+
+  async function handleRemoveTag(tag: Tag) {
+    if (!taggedDocument || updatingTagId !== null) return
+    setUpdatingTagId(tag.id)
+    setOrganizeError(null)
+    try {
+      await removeDocumentTag(taggedDocument.id, tag.id)
+      replaceDocument({
+        ...taggedDocument,
+        tags: taggedDocument.tags.filter((item) => item.id !== tag.id),
+      })
+    } catch (error: unknown) {
+      setOrganizeError(getApiErrorMessage(error, '文档标签移除失败'))
+    } finally {
+      setUpdatingTagId(null)
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
@@ -179,6 +258,11 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
             {indexError}
           </p>
         )}
+        {organizeError && !taggedDocument && (
+          <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {organizeError}
+          </p>
+        )}
         {isLoading ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
             正在加载文档…
@@ -208,11 +292,17 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
               onProcess={(document) => void handleProcess(document)}
               onIndex={(document) => void handleIndex(document)}
               onViewIndexStatus={setViewingIndexDocument}
+              onToggleFavorite={(document) => void handleToggleFavorite(document)}
+              onManageTags={(document) => {
+                setOrganizeError(null)
+                setTaggedDocument(document)
+              }}
               onViewChunks={setViewingDocument}
               onDelete={(document) => {
                 setDeleteError(null)
                 setDeletingDocument(document)
               }}
+              updatingFavoriteDocumentId={updatingFavoriteDocumentId}
             />
             <nav
               aria-label="文档分页"
@@ -276,6 +366,21 @@ export function DocumentManager({ knowledgeBaseId }: DocumentManagerProps) {
           knowledgeBaseId={knowledgeBaseId}
           onCompleted={() => void loadItems()}
           onClose={() => setIsReindexDialogOpen(false)}
+        />
+      )}
+
+      {taggedDocument && (
+        <DocumentTagsDialog
+          document={taggedDocument}
+          tags={tags}
+          updatingTagId={updatingTagId}
+          error={organizeError ?? tagLoadError}
+          onAdd={(tag) => void handleAddTag(tag)}
+          onRemove={(tag) => void handleRemoveTag(tag)}
+          onClose={() => {
+            setTaggedDocument(null)
+            setOrganizeError(null)
+          }}
         />
       )}
     </section>

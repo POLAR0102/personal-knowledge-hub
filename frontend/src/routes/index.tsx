@@ -5,7 +5,6 @@ import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { Chat } from '../pages/Chat'
 import { Dashboard } from '../pages/Dashboard'
-import { Documents } from '../pages/Documents'
 import { KnowledgeBaseDetail } from '../pages/KnowledgeBaseDetail'
 import { KnowledgeBases } from '../pages/KnowledgeBases'
 import { Login } from '../pages/Login'
@@ -16,6 +15,17 @@ const Agent = lazy(() =>
 )
 const Notes = lazy(() =>
   import('../pages/Notes').then((module) => ({ default: module.Notes })),
+)
+const Documents = lazy(() =>
+  import('../pages/Documents').then((module) => ({ default: module.Documents })),
+)
+const Favorites = lazy(() =>
+  import('../pages/Favorites').then((module) => ({ default: module.Favorites })),
+)
+const SemanticSearch = lazy(() =>
+  import('../pages/SemanticSearch').then((module) => ({
+    default: module.SemanticSearch,
+  })),
 )
 
 const pageFallback = (
@@ -40,7 +50,18 @@ export function AppRoutes() {
             path="knowledge-bases/:id"
             element={<KnowledgeBaseDetail />}
           />
-          <Route path="documents" element={<Documents />} />
+          <Route
+            path="documents"
+            element={<Suspense fallback={pageFallback}><Documents /></Suspense>}
+          />
+          <Route
+            path="favorites"
+            element={<Suspense fallback={pageFallback}><Favorites /></Suspense>}
+          />
+          <Route
+            path="semantic-search"
+            element={<Suspense fallback={pageFallback}><SemanticSearch /></Suspense>}
+          />
           <Route path="chat" element={<Chat />} />
           <Route
             path="agent"

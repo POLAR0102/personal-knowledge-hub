@@ -5,6 +5,7 @@ from app.db.models.document_chunk import DocumentChunk
 from app.db.models.knowledge_base import KnowledgeBase
 from app.db.models.message import Message, MessageRequestStatus, MessageRole
 from app.db.models.note import Note, NoteSourceType
+from app.db.models.tag import Tag, document_tags
 from app.db.models.user import User
 
 __all__ = [
@@ -22,5 +23,7 @@ __all__ = [
     "MessageRole",
     "Note",
     "NoteSourceType",
+    "Tag",
     "User",
+    "document_tags",
 ]

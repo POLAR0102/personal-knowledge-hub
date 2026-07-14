@@ -2,7 +2,17 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, Enum as SqlEnum, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Enum as SqlEnum,
+    ForeignKey,
+    Integer,
+    String,
+    false,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -10,6 +20,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.db.models.document_chunk import DocumentChunk
     from app.db.models.knowledge_base import KnowledgeBase
+    from app.db.models.tag import Tag
     from app.db.models.user import User
 
 
@@ -81,6 +92,13 @@ class Document(Base):
         nullable=True,
     )
     embedding_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_favorite: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=false(),
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -97,5 +115,10 @@ class Document(Base):
     chunks: Mapped[list["DocumentChunk"]] = relationship(
         back_populates="document",
         cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    tags: Mapped[list["Tag"]] = relationship(
+        secondary="document_tags",
+        back_populates="documents",
         passive_deletes=True,
     )

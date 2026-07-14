@@ -185,7 +185,7 @@ export function Dashboard() {
           </p>
         </div>
         <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-          当前阶段：轻量 Agent 与笔记
+          当前阶段：标签、收藏与资料整理
         </span>
       </section>
 
@@ -200,7 +200,7 @@ export function Dashboard() {
           label="文档"
           value={documentTotal ?? '—'}
           caption={documentCaption}
-          to="/knowledge-bases"
+          to="/documents"
         />
         <SummaryCard
           label="笔记"
@@ -222,14 +222,14 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-semibold text-slate-900">开始使用</p>
               <p className="mt-1 text-sm text-slate-500">
-                RAG 问答、轻量 Agent 和 Markdown 笔记均已开放
+                文档标签、收藏、跨知识库搜索和智能问答均已开放
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
               持续开发
             </span>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <QuickStep
               index={1}
               title="创建知识库"
@@ -238,15 +238,21 @@ export function Dashboard() {
             />
             <QuickStep
               index={2}
-              title="上传个人文档"
+              title="整理全部文档"
               status="已开放"
-              to="/knowledge-bases"
+              to="/documents"
             />
             <QuickStep
               index={3}
-              title="知识库问答"
+              title="查看收藏文档"
               status="已开放"
-              to="/chat"
+              to="/favorites"
+            />
+            <QuickStep
+              index={4}
+              title="语义检索"
+              status="已开放"
+              to="/semantic-search"
             />
           </div>
         </article>

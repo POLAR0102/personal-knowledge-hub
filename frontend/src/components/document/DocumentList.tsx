@@ -17,8 +17,11 @@ interface DocumentListProps {
   onViewChunks: (document: KnowledgeDocument) => void
   onIndex: (document: KnowledgeDocument) => void
   onViewIndexStatus: (document: KnowledgeDocument) => void
+  onToggleFavorite: (document: KnowledgeDocument) => void
+  onManageTags: (document: KnowledgeDocument) => void
   processingDocumentId: number | null
   indexingDocumentId: number | null
+  updatingFavoriteDocumentId: number | null
 }
 
 export function DocumentList({
@@ -28,8 +31,11 @@ export function DocumentList({
   onViewChunks,
   onIndex,
   onViewIndexStatus,
+  onToggleFavorite,
+  onManageTags,
   processingDocumentId,
   indexingDocumentId,
+  updatingFavoriteDocumentId,
 }: DocumentListProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200">
@@ -65,8 +71,45 @@ export function DocumentList({
                 {document.index_error_message && (
                   <p className="mt-2 text-xs text-rose-600">{document.index_error_message}</p>
                 )}
+                <div className="mt-2 flex min-h-6 flex-wrap gap-1.5">
+                  {document.tags.length === 0 ? (
+                    <span className="text-xs text-slate-400">暂无标签</span>
+                  ) : (
+                    document.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                      >
+                        {tag.name}
+                      </span>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={updatingFavoriteDocumentId !== null}
+                  onClick={() => onToggleFavorite(document)}
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition disabled:opacity-50 ${
+                    document.is_favorite
+                      ? 'border-amber-200 bg-amber-50 text-amber-700'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {updatingFavoriteDocumentId === document.id
+                    ? '处理中…'
+                    : document.is_favorite
+                      ? '★ 已收藏'
+                      : '☆ 收藏'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onManageTags(document)}
+                  className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                >
+                  设置标签
+                </button>
                 <DocumentIndexActions
                   document={document}
                   indexingDocumentId={indexingDocumentId}

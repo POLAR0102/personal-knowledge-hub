@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.db.models.document import DocumentIndexStatus, DocumentStatus
+from app.schemas.tag import TagRead
 
 
 class DocumentRead(BaseModel):
@@ -19,6 +20,8 @@ class DocumentRead(BaseModel):
     index_error_message: str | None
     indexed_at: datetime | None
     embedding_model: str | None
+    is_favorite: bool
+    tags: list[TagRead]
     created_at: datetime
     updated_at: datetime
     chunk_count: int = 0
@@ -35,6 +38,10 @@ class DocumentList(BaseModel):
 
 class DocumentStats(BaseModel):
     total: int
+
+
+class DocumentFavoriteUpdate(BaseModel):
+    is_favorite: bool
 
 
 class DocumentProcessResult(BaseModel):

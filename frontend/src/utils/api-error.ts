@@ -65,6 +65,9 @@ export function getApiErrorMessage(
       'Only completed Agent tasks can be saved as a note': '只有已完成的 Agent 任务可以保存为笔记',
       'Note not found': '笔记不存在或无权访问',
       'Note operation failed': '笔记操作失败，请稍后重试',
+      'Tag not found': '标签不存在或无权访问',
+      'Tag name already exists': '标签名称已经存在',
+      'Tag operation failed': '标签操作失败，请稍后重试',
     }
     return messages[detail] ?? detail
   }

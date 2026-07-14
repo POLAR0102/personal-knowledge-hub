@@ -98,3 +98,13 @@ CHAT_MODEL=deepseek-v4-flash
 问答会话会保存用户消息、AI 回答和当时的引用快照。当前每条问题仍独立执行 RAG，历史消息暂不加入下一轮 Prompt。
 
 切换 Embedding 模型后，必须重新为已有文档建立索引，不能混用不同维度或不同模型生成的向量。
+
+## 文档组织
+
+- `GET /api/v1/documents`：跨知识库分页查询当前用户文档，支持 `filename`、`status`、`knowledge_base_id`、`tag_id` 和 `is_favorite` 组合筛选。
+- `GET /api/v1/documents/favorites`：查询当前用户收藏的文档，并支持相同的辅助筛选条件。
+- `PUT /api/v1/documents/{document_id}/favorite`：显式设置收藏状态，重复请求不会反转结果。
+- `POST /api/v1/documents/{document_id}/tags/{tag_id}` 和对应 `DELETE`：添加或移除文档标签。
+- `/api/v1/tags` 提供当前用户私有标签的创建、分页列表、详情、修改和删除接口。
+
+标签名称长度为 1 到 30 个字符，并在同一用户内保持唯一。所有文档、知识库和标签筛选都校验当前用户归属。

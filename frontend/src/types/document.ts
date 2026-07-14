@@ -1,3 +1,5 @@
+import type { TagSummary } from './tag'
+
 export type DocumentStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export type DocumentIndexStatus = 'not_indexed' | 'indexing' | 'indexed' | 'failed'
 
@@ -18,6 +20,8 @@ export interface KnowledgeDocument {
   created_at: string
   updated_at: string
   chunk_count: number
+  is_favorite: boolean
+  tags: TagSummary[]
 }
 
 export interface DocumentListResponse {

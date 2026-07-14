@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.db.models.document_chunk import DocumentChunk
     from app.db.models.knowledge_base import KnowledgeBase
     from app.db.models.note import Note
+    from app.db.models.tag import Tag
 
 
 class User(Base):
@@ -76,6 +77,11 @@ class User(Base):
         passive_deletes=True,
     )
     notes: Mapped[list["Note"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    tags: Mapped[list["Tag"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
         passive_deletes=True,

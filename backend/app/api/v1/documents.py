@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.db.models import DocumentStatus, User
 from app.db.session import get_db
 from app.schemas.document import (
+    DocumentFavoriteUpdate,
     DocumentList,
     DocumentIndexResult,
     DocumentIndexStatusRead,
@@ -34,11 +35,16 @@ from app.services.document import (
     KnowledgeBaseNotFoundError,
     UnsupportedDocumentTypeError,
     DocumentVectorStoreError,
+    DocumentTagNotFoundError,
+    add_document_tag,
     count_document_chunks,
     count_documents,
     delete_document,
     get_document,
     list_documents,
+    list_all_documents,
+    remove_document_tag,
+    set_document_favorite,
     upload_document,
 )
 from app.services.document_processing import (
@@ -79,6 +85,10 @@ def knowledge_base_not_found_error() -> HTTPException:
 
 def database_error() -> HTTPException:
     return HTTPException(status_code=500, detail="Document operation failed")
+
+
+def tag_not_found_error() -> HTTPException:
+    return HTTPException(status_code=404, detail="Tag not found")
 
 
 @router.post(
@@ -155,6 +165,91 @@ def list_all(
     )
 
 
+@router.get("/documents", response_model=DocumentList)
+def list_across_knowledge_bases(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    filename: Annotated[str | None, Query(min_length=1, max_length=255)] = None,
+    document_status: Annotated[DocumentStatus | None, Query(alias="status")] = None,
+    knowledge_base_id: Annotated[int | None, Query(gt=0)] = None,
+    tag_id: Annotated[int | None, Query(gt=0)] = None,
+    is_favorite: bool | None = None,
+) -> DocumentList:
+    try:
+        items, total = list_all_documents(
+            db,
+            current_user,
+            page=page,
+            page_size=page_size,
+            filename=filename,
+            status=document_status,
+            knowledge_base_id=knowledge_base_id,
+            tag_id=tag_id,
+            is_favorite=is_favorite,
+        )
+    except KnowledgeBaseNotFoundError as exc:
+        raise knowledge_base_not_found_error() from exc
+    except DocumentTagNotFoundError as exc:
+        raise tag_not_found_error() from exc
+    except DocumentDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentList(
+        items=[
+            DocumentRead.model_validate(document).model_copy(
+                update={"chunk_count": chunk_count}
+            )
+            for document, chunk_count in items
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/documents/favorites", response_model=DocumentList)
+def list_favorites(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    filename: Annotated[str | None, Query(min_length=1, max_length=255)] = None,
+    document_status: Annotated[DocumentStatus | None, Query(alias="status")] = None,
+    knowledge_base_id: Annotated[int | None, Query(gt=0)] = None,
+    tag_id: Annotated[int | None, Query(gt=0)] = None,
+) -> DocumentList:
+    try:
+        items, total = list_all_documents(
+            db,
+            current_user,
+            page=page,
+            page_size=page_size,
+            filename=filename,
+            status=document_status,
+            knowledge_base_id=knowledge_base_id,
+            tag_id=tag_id,
+            is_favorite=True,
+        )
+    except KnowledgeBaseNotFoundError as exc:
+        raise knowledge_base_not_found_error() from exc
+    except DocumentTagNotFoundError as exc:
+        raise tag_not_found_error() from exc
+    except DocumentDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentList(
+        items=[
+            DocumentRead.model_validate(document).model_copy(
+                update={"chunk_count": chunk_count}
+            )
+            for document, chunk_count in items
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/documents/stats", response_model=DocumentStats)
 def stats(
     db: Annotated[Session, Depends(get_db)],
@@ -165,6 +260,77 @@ def stats(
     except DocumentDatabaseError as exc:
         raise database_error() from exc
     return DocumentStats(total=total)
+
+
+@router.put("/documents/{document_id}/favorite", response_model=DocumentRead)
+def set_favorite(
+    document_id: int,
+    data: DocumentFavoriteUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> DocumentRead:
+    try:
+        document = set_document_favorite(
+            db,
+            current_user,
+            document_id,
+            is_favorite=data.is_favorite,
+        )
+        chunk_count = count_document_chunks(db, current_user, document.id)
+    except DocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except DocumentDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentRead.model_validate(document).model_copy(
+        update={"chunk_count": chunk_count}
+    )
+
+
+@router.post("/documents/{document_id}/tags/{tag_id}", response_model=DocumentRead)
+def add_tag(
+    document_id: int,
+    tag_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> DocumentRead:
+    try:
+        document = add_document_tag(
+            db,
+            current_user,
+            document_id,
+            tag_id,
+        )
+        chunk_count = count_document_chunks(db, current_user, document.id)
+    except DocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except DocumentTagNotFoundError as exc:
+        raise tag_not_found_error() from exc
+    except DocumentDatabaseError as exc:
+        raise database_error() from exc
+    return DocumentRead.model_validate(document).model_copy(
+        update={"chunk_count": chunk_count}
+    )
+
+
+@router.delete(
+    "/documents/{document_id}/tags/{tag_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_tag(
+    document_id: int,
+    tag_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Response:
+    try:
+        remove_document_tag(db, current_user, document_id, tag_id)
+    except DocumentNotFoundError as exc:
+        raise document_not_found_error() from exc
+    except DocumentTagNotFoundError as exc:
+        raise tag_not_found_error() from exc
+    except DocumentDatabaseError as exc:
+        raise database_error() from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

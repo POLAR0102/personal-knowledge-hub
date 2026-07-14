@@ -18,6 +18,16 @@ interface DocumentListParams {
   status?: DocumentStatus
 }
 
+export interface DocumentLibraryParams {
+  page?: number
+  page_size?: number
+  filename?: string
+  status?: DocumentStatus
+  knowledge_base_id?: number
+  tag_id?: number
+  is_favorite?: boolean
+}
+
 export async function uploadDocument(
   knowledgeBaseId: number,
   file: File,
@@ -50,6 +60,53 @@ export async function listDocuments(
 export async function getDocument(id: number): Promise<KnowledgeDocument> {
   const response = await apiClient.get<KnowledgeDocument>(`/documents/${id}`)
   return response.data
+}
+
+export async function listAllDocuments(
+  params: DocumentLibraryParams = {},
+): Promise<DocumentListResponse> {
+  const response = await apiClient.get<DocumentListResponse>('/documents', {
+    params,
+  })
+  return response.data
+}
+
+export async function listFavoriteDocuments(
+  params: Omit<DocumentLibraryParams, 'is_favorite'> = {},
+): Promise<DocumentListResponse> {
+  const response = await apiClient.get<DocumentListResponse>(
+    '/documents/favorites',
+    { params },
+  )
+  return response.data
+}
+
+export async function setDocumentFavorite(
+  id: number,
+  isFavorite: boolean,
+): Promise<KnowledgeDocument> {
+  const response = await apiClient.put<KnowledgeDocument>(
+    `/documents/${id}/favorite`,
+    { is_favorite: isFavorite },
+  )
+  return response.data
+}
+
+export async function addDocumentTag(
+  documentId: number,
+  tagId: number,
+): Promise<KnowledgeDocument> {
+  const response = await apiClient.post<KnowledgeDocument>(
+    `/documents/${documentId}/tags/${tagId}`,
+  )
+  return response.data
+}
+
+export async function removeDocumentTag(
+  documentId: number,
+  tagId: number,
+): Promise<void> {
+  await apiClient.delete(`/documents/${documentId}/tags/${tagId}`)
 }
 
 export async function deleteDocument(id: number): Promise<void> {

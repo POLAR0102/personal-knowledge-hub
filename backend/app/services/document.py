@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import UploadFile
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.ai.vector_store import VectorStore, VectorStoreError, get_vector_store
@@ -12,6 +12,7 @@ from app.db.models import Document, DocumentIndexStatus, DocumentStatus, User
 from app.repositories.document import DocumentRepository
 from app.repositories.document_chunk import DocumentChunkRepository
 from app.repositories.knowledge_base import KnowledgeBaseRepository
+from app.repositories.tag import TagRepository
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,10 @@ class DocumentIndexingInProgressError(Exception):
 
 
 class DocumentVectorStoreError(Exception):
+    pass
+
+
+class DocumentTagNotFoundError(Exception):
     pass
 
 
@@ -225,6 +230,57 @@ def list_documents(
         raise DocumentDatabaseError from exc
 
 
+def list_all_documents(
+    db: Session,
+    owner: User,
+    *,
+    page: int,
+    page_size: int,
+    filename: str | None,
+    status: DocumentStatus | None,
+    knowledge_base_id: int | None,
+    tag_id: int | None,
+    is_favorite: bool | None,
+) -> tuple[list[tuple[Document, int]], int]:
+    if knowledge_base_id is not None:
+        _get_owned_knowledge_base_id(db, owner, knowledge_base_id)
+
+    try:
+        if tag_id is not None and TagRepository(db).get_owned(
+            tag_id=tag_id,
+            user_id=owner.id,
+        ) is None:
+            raise DocumentTagNotFoundError
+        normalized_filename = filename.strip() if filename is not None else None
+        if not normalized_filename:
+            normalized_filename = None
+        repository = DocumentRepository(db)
+        items = repository.list_owned(
+            user_id=owner.id,
+            offset=(page - 1) * page_size,
+            limit=page_size,
+            filename=normalized_filename,
+            status=status,
+            knowledge_base_id=knowledge_base_id,
+            tag_id=tag_id,
+            is_favorite=is_favorite,
+        )
+        total = repository.count_owned_filtered(
+            user_id=owner.id,
+            filename=normalized_filename,
+            status=status,
+            knowledge_base_id=knowledge_base_id,
+            tag_id=tag_id,
+            is_favorite=is_favorite,
+        )
+        return items, total
+    except DocumentTagNotFoundError:
+        raise
+    except SQLAlchemyError as exc:
+        logger.exception("Database error while listing documents across knowledge bases")
+        raise DocumentDatabaseError from exc
+
+
 def get_document(db: Session, owner: User, document_id: int) -> Document:
     repository = DocumentRepository(db)
     try:
@@ -236,6 +292,81 @@ def get_document(db: Session, owner: User, document_id: int) -> Document:
     if document is None:
         raise DocumentNotFoundError
     return document
+
+
+def set_document_favorite(
+    db: Session,
+    owner: User,
+    document_id: int,
+    *,
+    is_favorite: bool,
+) -> Document:
+    repository = DocumentRepository(db)
+    document = get_document(db, owner, document_id)
+    try:
+        repository.set_favorite(document, is_favorite)
+        db.commit()
+        db.refresh(document)
+        return document
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Database error while changing document favorite state")
+        raise DocumentDatabaseError from exc
+
+
+def add_document_tag(
+    db: Session,
+    owner: User,
+    document_id: int,
+    tag_id: int,
+) -> Document:
+    repository = DocumentRepository(db)
+    document = get_document(db, owner, document_id)
+    try:
+        tag = TagRepository(db).get_owned(tag_id=tag_id, user_id=owner.id)
+        if tag is None:
+            raise DocumentTagNotFoundError
+        repository.add_tag(document, tag)
+        db.commit()
+        db.refresh(document)
+        return document
+    except DocumentTagNotFoundError:
+        db.rollback()
+        raise
+    except IntegrityError as exc:
+        db.rollback()
+        document = get_document(db, owner, document_id)
+        if any(existing.id == tag_id for existing in document.tags):
+            return document
+        logger.exception("Integrity error while adding a document tag")
+        raise DocumentDatabaseError from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Database error while adding a document tag")
+        raise DocumentDatabaseError from exc
+
+
+def remove_document_tag(
+    db: Session,
+    owner: User,
+    document_id: int,
+    tag_id: int,
+) -> None:
+    repository = DocumentRepository(db)
+    document = get_document(db, owner, document_id)
+    try:
+        tag = TagRepository(db).get_owned(tag_id=tag_id, user_id=owner.id)
+        if tag is None:
+            raise DocumentTagNotFoundError
+        repository.remove_tag(document, tag)
+        db.commit()
+    except DocumentTagNotFoundError:
+        db.rollback()
+        raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Database error while removing a document tag")
+        raise DocumentDatabaseError from exc
 
 
 def count_document_chunks(db: Session, owner: User, document_id: int) -> int:

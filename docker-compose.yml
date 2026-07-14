@@ -1,0 +1,64 @@
+name: personal-knowledge-hub
+
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./.env
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in the root .env file}
+      DATABASE_URL: sqlite:////data/database/personal_knowledge_hub.db
+      UPLOAD_DIR: /data/uploads
+      CHROMA_PERSIST_DIR: /data/chroma
+      LOCAL_EMBEDDING_CACHE_DIR: /data/model_cache
+      LOG_FILE: /data/logs/app.log
+      CORS_ORIGINS: '["http://localhost:8080","http://127.0.0.1:8080"]'
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - database_data:/data/database
+      - upload_data:/data/uploads
+      - chroma_data:/data/chroma
+      - model_cache:/data/model_cache
+      - log_data:/data/logs
+      - backup_data:/backups
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      start_period: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  database_data:
+  upload_data:
+  chroma_data:
+  model_cache:
+  log_data:
+  backup_data:

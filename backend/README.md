@@ -108,3 +108,64 @@ CHAT_MODEL=deepseek-v4-flash
 - `/api/v1/tags` 提供当前用户私有标签的创建、分页列表、详情、修改和删除接口。
 
 标签名称长度为 1 到 30 个字符，并在同一用户内保持唯一。所有文档、知识库和标签筛选都校验当前用户归属。
+
+## 日志
+
+后端始终向控制台输出日志，默认级别为 `INFO`。如需保留滚动日志，在 `.env` 中配置：
+
+```env
+LOG_LEVEL=INFO
+LOG_FILE=./logs/app.log
+LOG_MAX_BYTES=10485760
+LOG_BACKUP_COUNT=5
+```
+
+单个日志文件达到 `LOG_MAX_BYTES` 后自动轮转，最多保留 `LOG_BACKUP_COUNT` 个历史文件。日志不会主动记录 API Key、JWT 或完整文档正文。
+
+## 演示数据
+
+先执行 `alembic upgrade head`，再在 `backend` 目录运行：
+
+```powershell
+python -m scripts.seed_demo
+```
+
+开发环境默认创建以下本地演示数据：
+
+- 账号：`demo@example.com`
+- 密码：`Demo123456!`
+- 一个知识库和一份状态为 `pending` 的 Markdown 演示文档
+
+脚本可以重复执行，不会重复创建记录，也不会重置已存在账号的密码。登录后请在知识库详情中依次点击“开始处理”和“建立索引”，即可用于语义检索、RAG 与 Agent 演示。
+
+演示账号只应用于本地答辩环境。公网部署前必须删除该账号或修改密码；当 `APP_ENV=production` 时，脚本拒绝使用默认密码，必须显式执行：
+
+```powershell
+python -m scripts.seed_demo --password "your-explicit-demo-password"
+```
+
+## 数据备份与恢复
+
+SQLite、上传文件和 ChromaDB 共同构成一份完整数据。为保证三个组件处于同一时间点，执行备份前应停止后端服务或至少暂停上传、索引和删除操作：
+
+```powershell
+python -m scripts.backup_data
+```
+
+脚本使用 SQLite 在线备份 API 创建一致的数据库副本，并将 `UPLOAD_DIR` 和 `CHROMA_PERSIST_DIR` 复制到 `./backups/<UTC时间>/`。每份备份包含 `manifest.json`，但不会复制 `.env`、API Key 或模型缓存。
+
+可通过参数指定备份根目录，命令在 Windows 和 Linux 上相同：
+
+```powershell
+python -m scripts.backup_data --output-dir D:/knowledge-backups
+```
+
+恢复步骤：
+
+1. 停止后端服务。
+2. 先备份或移走当前数据库、上传目录和 Chroma 目录。
+3. 将备份中的 `database.sqlite3` 放回 `DATABASE_URL` 对应位置。
+4. 将 `uploads/` 和 `chroma/` 分别放回 `UPLOAD_DIR` 与 `CHROMA_PERSIST_DIR`。
+5. 启动后端并检查健康接口、文档文件和索引健康状态。
+
+建议每天定时备份并至少保留最近 7 份；备份目录应放在项目目录之外或独立磁盘。当前脚本只支持 SQLite，未来切换 PostgreSQL 后应使用 `pg_dump`，上传文件和 ChromaDB 仍按相同停写策略备份。

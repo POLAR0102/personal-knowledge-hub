@@ -1,7 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +42,16 @@ class Settings(BaseSettings):
     rag_temperature: float = 0.2
     rag_max_tokens: int = 800
     rag_max_context_chars: int = 12_000
+    log_level: Literal[
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
+    ] = "INFO"
+    log_file: Path | None = None
+    log_max_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
+    log_backup_count: int = Field(default=5, ge=1)
 
     model_config = SettingsConfigDict(
         env_file=".env",

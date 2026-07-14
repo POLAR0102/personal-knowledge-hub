@@ -7,9 +7,11 @@ from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.logging import configure_logging
 
-logger = logging.getLogger(__name__)
 settings = get_settings()
+configure_logging(settings)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.app_name,
